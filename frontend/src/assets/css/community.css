@@ -1,0 +1,42 @@
+/* 카드 높이 균일 */
+.card-full {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.card-full .ant-card-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* 내용 영역이 남는 공간 채우기 */
+.post-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* 본문 3줄 라인 클램프 */
+.post-content {
+  flex: 1 1 auto;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 3;      /* 최대 3줄 표시 */
+  -webkit-box-orient: vertical;
+}
+
+/* 제목 1줄 라인 클램프 (길면 … 처리) */
+.card-title-clamp,
+.ant-card-head-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 태그/액션이 아래로 밀리도록 */
+.ant-card-actions {
+  margin-top: auto;
+}
