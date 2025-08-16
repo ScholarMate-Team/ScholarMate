@@ -10,4 +10,4 @@ class ContactMessage(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
 
     def __str__(self):
-        return f"{self.name} <{self.email}>"
+        return f"[{self.created_at:%Y-%m-%d %H:%M}] {self.name} <{self.email}>"
