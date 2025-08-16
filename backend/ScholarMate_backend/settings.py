@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     'userinfor',
+    'contact',
 ]
 
 REST_FRAMEWORK = {
