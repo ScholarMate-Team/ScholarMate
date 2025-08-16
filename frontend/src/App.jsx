@@ -12,6 +12,7 @@ import Wishlist from "./components/Wishlist";
 import CalendarPage from "./pages/Calendar";
 import isTokenExpired from "./api/auth"; 
 import Recommendation from "./pages/Recommendation";
+import CommunityPage from "./pages/CommunityPage";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -115,6 +116,14 @@ export default function App() {
             element={
               <PrivateRoute isLoggedIn={isLoggedIn}>
                 <Useinfor />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/community"
+            element={
+              <PrivateRoute isLoggedIn={isLoggedIn}>
+                <CommunityPage />
               </PrivateRoute>
             }
           />
