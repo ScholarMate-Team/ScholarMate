@@ -1,0 +1,146 @@
+name: Sync issue labels to Project Status
+
+on:
+  issues:
+    types: [labeled, reopened, closed]
+
+permissions:
+  contents: read
+  issues: write
+  projects: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Map label -> Status and update Project item
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // ---- 1) 매핑: 라벨 -> 보드 Status 옵션명 ----
+            const LABEL_TO_STATUS = {
+              'in-progress': 'In Progress',
+              'done-in-dev': 'Done',
+            };
+
+            const labeled = context.payload.action === 'labeled';
+            const reopened = context.payload.action === 'reopened';
+            const closed   = context.payload.action === 'closed';
+
+            // 닫히면 Done으로, 다시 열리면 Todo로 자동(라벨 없어도)
+            if (closed) {
+              context.payload.label = { name: 'done-in-dev' };
+            } else if (reopened) {
+              // reopen은 보드의 Todo로 돌리고 싶다면 라벨 매핑 없이 직접 지정
+              LABEL_TO_STATUS['__force'] = 'Todo';
+              context.payload.label = { name: '__force' };
+            }
+
+            const label = context.payload.label?.name;
+            const targetStatus = LABEL_TO_STATUS[label];
+            if (!targetStatus) {
+              core.info(`No mapping for label: ${label}. Skip.`);
+              return;
+            }
+
+            // ---- 2) 프로젝트 번호/소유자 설정 ----
+            const owner = context.repo.owner; // user project
+            const projectNumber = 3;          // ← 너 프로젝트 번호로 변경 (URL의 /projects/3)
+
+            // ---- 3) 프로젝트/Status 필드 정보 조회 ----
+            const proj = await github.graphql(`
+              query($login:String!, $number:Int!){
+                user(login:$login){
+                  projectV2(number:$number){
+                    id
+                    fields(first:50){
+                      nodes{
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                          options { id name }
+                        }
+                      }
+                    }
+                  }
+                }
+              }`,
+              { login: owner, number: projectNumber }
+            );
+
+            const project = proj.user?.projectV2;
+            if (!project) {
+              core.setFailed('Project not found. Check owner/projectNumber.');
+              return;
+            }
+
+            const statusField = project.fields.nodes.find(f => f?.name === 'Status');
+            if (!statusField) {
+              core.setFailed('Status field not found in project.');
+              return;
+            }
+
+            const statusOption = statusField.options.find(o => o.name === targetStatus);
+            if (!statusOption) {
+              core.setFailed(`Status option "${targetStatus}" not found. Create it in the project first.`);
+              return;
+            }
+
+            // ---- 4) 이슈를 프로젝트에 추가(없으면) ----
+            const issueNodeId = context.payload.issue.node_id;
+
+            // 추가 시도 (이미 있으면 에러 무시)
+            await github.graphql(`
+              mutation($projectId:ID!, $contentId:ID!){
+                addProjectV2ItemById(input:{projectId:$projectId, contentId:$contentId}){
+                  item { id }
+                }
+              }`,
+              { projectId: project.id, contentId: issueNodeId }
+            ).catch(()=>{});
+
+            // ---- 5) 아이템(보드상의 카드) ID 찾기 ----
+            const items = await github.graphql(`
+              query($projectId:ID!){
+                node(id:$projectId){
+                  ... on ProjectV2 {
+                    items(first:200){
+                      nodes{
+                        id
+                        content { ... on Issue { id } }
+                      }
+                    }
+                  }
+                }
+              }`,
+              { projectId: project.id }
+            );
+
+            const item = items.node.items.nodes.find(n => n.content?.id === issueNodeId);
+            if (!item) {
+              core.setFailed('Project item not found for this issue.');
+              return;
+            }
+
+            // ---- 6) Status 업데이트 ----
+            await github.graphql(`
+              mutation($projectId:ID!, $itemId:ID!, $fieldId:ID!, $optionId:String!){
+                updateProjectV2ItemFieldValue(
+                  input:{
+                    projectId:$projectId,
+                    itemId:$itemId,
+                    fieldId:$fieldId,
+                    value:{ singleSelectOptionId:$optionId }
+                  }
+                ){ clientMutationId }
+              }`,
+              {
+                projectId: project.id,
+                itemId: item.id,
+                fieldId: statusField.id,
+                optionId: statusOption.id
+              }
+            );
+
+            core.info(`Status updated to "${targetStatus}" for issue #${context.payload.issue.number}`);
