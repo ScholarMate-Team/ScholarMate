@@ -42,7 +42,8 @@ export default function Scholarships() {
       if (result) {
         const dataWithIds = (result.data || []).map((item) => ({
           ...item,
-          id: `${item["상품명"]}_${item["운영기관명"]}`,
+          // ✅ product_id를 사용하여 고유 키 생성
+          id: item.product_id,
         }));
         setScholarships(dataWithIds);
         setTotalCount(result.total || 0);
@@ -65,7 +66,8 @@ export default function Scholarships() {
       if (res.ok) {
         const data = await res.json();
         const ids = (data || []).map(
-          (item) => `${item.scholarship.name}_${item.scholarship.foundation_name}`
+          // ✅ 찜 목록 조회 시에도 새 필드명 사용
+          (item) => item.scholarship.product_id
         );
         setFavorites(new Set(ids));
       }
@@ -117,7 +119,8 @@ export default function Scholarships() {
   };
 
   const handleFavoriteToggle = async (item) => {
-    const id = `${item["상품명"]}_${item["운영기관명"]}`;
+    // ✅ product_id를 사용하여 고유 식별자 생성
+    const id = item.product_id;
     const isFavorited = favorites.has(id);
 
     const url = isFavorited
@@ -131,6 +134,7 @@ export default function Scholarships() {
           "Content-Type": "application/json",
           Authorization: `JWT ${localStorage.getItem("token")}`,
         },
+        // ✅ 찜 추가/제거 시에도 새 필드명 사용
         body: JSON.stringify(isFavorited ? { product_id: id, action: "remove" } : item),
       });
       const result = await response.json();
@@ -205,10 +209,12 @@ export default function Scholarships() {
               </thead>
               <tbody>
                 {scholarships.map((item) => (
-                  <tr key={item.id}>
-                    <td>{item["운영기관명"]}</td>
-                    <td>{item["상품명"]}</td>
-                    <td>{item["모집시작일"]} ~ {item["모집종료일"]}</td>
+                  // ✅ `key`에 product_id 사용
+                  <tr key={item.product_id}> 
+                    {/* ✅ 백엔드 필드명에 맞게 데이터 표시 */}
+                    <td>{item.foundation_name}</td>
+                    <td>{item.name}</td>
+                    <td>{item.recruitment_start} ~ {item.recruitment_end}</td>
                     <td>
                       <button onClick={() => openModal(item)} className="details-btn">
                         상세정보 보기
@@ -216,7 +222,8 @@ export default function Scholarships() {
                     </td>
                     <td>
                       <button
-                        onClick={() => window.open(item["홈페이지 주소"], "_blank")}
+                        // ✅ 홈페이지 필드명 수정
+                        onClick={() => window.open(item.url, "_blank")}
                         className="details-btn"
                       >
                         홈페이지 보기
@@ -225,9 +232,9 @@ export default function Scholarships() {
                     <td>
                       <button
                         onClick={() => handleFavoriteToggle(item)}
-                        className={`favorite-btn ${favorites.has(item.id) ? "favorited" : ""}`}
+                        className={`favorite-btn ${favorites.has(item.product_id) ? "favorited" : ""}`}
                       >
-                        {favorites.has(item.id) ? "❤️" : "🤍"}
+                        {favorites.has(item.product_id) ? "❤️" : "🤍"}
                       </button>
                     </td>
                   </tr>
@@ -260,21 +267,24 @@ export default function Scholarships() {
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={closeModal} aria-label="닫기">×</button>
-            <h2>{selectedScholarship["상품명"]} 상세 정보</h2>
+            {/* ✅ 모달 제목 필드명 수정 */}
+            <h2>{selectedScholarship.name} 상세 정보</h2>
             <div className="modal-body">
-              <p><strong>성적기준:</strong> {selectedScholarship["성적기준 상세내용"]}</p>
-              <p><strong>소득기준:</strong> {selectedScholarship["소득기준 상세내용"]}</p>
-              <p><strong>지원내역:</strong> {selectedScholarship["지원내역 상세내용"]}</p>
-              <p><strong>특정자격:</strong> {selectedScholarship["특정자격 상세내용"]}</p>
-              <p><strong>지역거주여부:</strong> {selectedScholarship["지역거주여부 상세내용"]}</p>
-              <p><strong>선발방법:</strong> {selectedScholarship["선발방법 상세내용"]}</p>
-              <p><strong>선발인원:</strong> {selectedScholarship["선발인원 상세내용"]}</p>
-              <p><strong>자격제한:</strong> {selectedScholarship["자격제한 상세내용"]}</p>
-              <p><strong>추천필요여부:</strong> {selectedScholarship["추천필요여부 상세내용"]}</p>
-              <p><strong>제출서류:</strong> {selectedScholarship["제출서류 상세내용"]}</p>
+              {/* ✅ 모달 내용의 필드명 모두 수정 */}
+              <p><strong>성적기준:</strong> {selectedScholarship.grade_criteria_details}</p>
+              <p><strong>소득기준:</strong> {selectedScholarship.income_criteria_details}</p>
+              <p><strong>지원내역:</strong> {selectedScholarship.support_details}</p>
+              <p><strong>특정자격:</strong> {selectedScholarship.specific_qualification_details}</p>
+              <p><strong>지역거주여부:</strong> {selectedScholarship.residency_requirement_details}</p>
+              <p><strong>선발방법:</strong> {selectedScholarship.selection_method_details}</p>
+              <p><strong>선발인원:</strong> {selectedScholarship.number_of_recipients_details}</p>
+              <p><strong>자격제한:</strong> {selectedScholarship.eligibility_restrictions}</p>
+              <p><strong>추천필요여부:</strong> {selectedScholarship.recommendation_required ? "필요" : "불필요"}</p>
+              <p><strong>제출서류:</strong> {selectedScholarship.required_documents_details}</p>
               <p>
                 <strong>홈페이지:</strong>{" "}
-                <a href={selectedScholarship["홈페이지 주소"]} target="_blank" rel="noopener noreferrer">
+                {/* ✅ 홈페이지 필드명 수정 */}
+                <a href={selectedScholarship.url} target="_blank" rel="noopener noreferrer">
                   홈페이지 이동
                 </a>
               </p>
