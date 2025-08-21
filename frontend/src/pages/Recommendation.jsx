@@ -2,8 +2,24 @@ import React, { useEffect, useLayoutEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const DUMMY_RECOMMENDATIONS = [
-  { id: 1, name: "국가장학금 1유형", foundation_name: "한국장학재단", recruitment_start: "2025-06-01", recruitment_end: "2025-06-20" },
-  { id: 2, name: "미래드림 장학금", foundation_name: "미래재단", recruitment_start: "2025-07-01", recruitment_end: "2025-07-15" },
+  {
+    id: 1,
+    product_id: 1,
+    name: "국가장학금 1유형",
+    foundation_name: "한국장학재단",
+    recruitment_start: "2025-06-01",
+    recruitment_end: "2025-06-20",
+    url: "https://www.kosaf.go.kr/",
+  },
+  {
+    id: 2,
+    product_id: 2,
+    name: "미래드림 장학금",
+    foundation_name: "미래재단",
+    recruitment_start: "2025-07-01",
+    recruitment_end: "2025-07-15",
+    url: "https://example.org/",
+  },
 ];
 
 export default function Recommendation() {
@@ -11,6 +27,14 @@ export default function Recommendation() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [headerPad, setHeaderPad] = useState(96);
+
+  // ❤️ 찜 상태
+  const [favorites, setFavorites] = useState(new Set());
+
+  // 상세 모달
+  const [selected, setSelected] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const navigate = useNavigate();
 
   // 헤더 높이만큼 패딩
@@ -28,6 +52,11 @@ export default function Recommendation() {
     return () => window.removeEventListener("resize", updatePad);
   }, []);
 
+  const API_BASE =
+    import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
+    "http://34.228.112.95";
+
+  // 추천 로드
   useEffect(() => {
     const fetchRecommendations = async () => {
       setLoading(true);
@@ -39,22 +68,26 @@ export default function Recommendation() {
           setLoading(false);
           return;
         }
-        const base =
-          import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
-          "http://34.228.112.95";
 
-        const res = await fetch(`${base}/api/recommendation/`, {
+        const res = await fetch(`${API_BASE}/api/recommendation/`, {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            Authorization: `JWT ${token}`,
           },
         });
+
+        if (res.status === 404) {
+          setRecommendations([]);
+          setError("먼저 '나의 장학 정보'를 입력해주세요.");
+          setLoading(false);
+          return;
+        }
 
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           if (res.status === 401)
             throw new Error("로그인 세션이 만료되었습니다. 다시 로그인해주세요.");
-          throw new Error(data.detail || `API 응답 오류: ${res.status}`);
+          throw new Error(data?.detail || `API 응답 오류: ${res.status}`);
         }
 
         const recs = Array.isArray(data?.scholarships) ? data.scholarships : [];
@@ -76,19 +109,86 @@ export default function Recommendation() {
     };
 
     fetchRecommendations();
-  }, [navigate]);
+  }, [navigate, API_BASE]);
 
-  // ✅ 강제 중앙 정렬 래퍼
+  // 초기 찜 목록 로드
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        const res = await fetch(`${API_BASE}/api/wishlist/`, {
+          headers: { Authorization: `JWT ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const ids = (data || []).map((w) => w.scholarship.product_id);
+        setFavorites(new Set(ids));
+      } catch (e) {
+        // 무시 (UX 단순화)
+      }
+    };
+    loadFavorites();
+  }, [API_BASE]);
+
+  // 상세 모달
+  const openModal = (item) => {
+    setSelected(item);
+    setIsModalOpen(true);
+  };
+  const closeModal = () => {
+    setSelected(null);
+    setIsModalOpen(false);
+  };
+
+  // 찜 토글
+  const toggleFavorite = async (item) => {
+    const id = item.product_id ?? item.id;
+    const isFavorited = favorites.has(id);
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+
+    const url = isFavorited
+      ? `${API_BASE}/api/wishlist/toggle/`
+      : `${API_BASE}/api/wishlist/add-from-api/`;
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `JWT ${token}`,
+        },
+        body: JSON.stringify(
+          isFavorited ? { product_id: id, action: "remove" } : item
+        ),
+      });
+
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result?.error || "서버 오류");
+
+      setFavorites((prev) => {
+        const updated = new Set(prev);
+        if (isFavorited) updated.delete(id);
+        else updated.add(id);
+        return updated;
+      });
+    } catch (e) {
+      alert(e.message || "찜 처리 중 오류가 발생했습니다.");
+    }
+  };
+
+  // ✅ 레이아웃 래퍼
   const Wrapper = ({ children }) => (
-    <main
-      className="min-h-screen bg-gray-100"
-      style={{ paddingTop: headerPad }}
-    >
-      {/* 화면 전체 폭 확보 후, 가로 중앙 정렬 */}
+    <main className="min-h-screen bg-gray-100" style={{ paddingTop: headerPad }}>
       <div className="w-screen max-w-full px-4 flex justify-center">
-        {/* 실제 카드 컨테이너 */}
-        <section className="w-full max-w-4xl bg-white rounded-lg shadow-xl p-8"
-                 style={{ marginLeft: "auto", marginRight: "auto" }}>
+        <section
+          className="w-full max-w-4xl bg-white rounded-lg shadow-xl p-8"
+          style={{ marginLeft: "auto", marginRight: "auto" }}
+        >
           {children}
         </section>
       </div>
@@ -109,13 +209,23 @@ export default function Recommendation() {
     return (
       <Wrapper>
         <div className="flex flex-col items-center">
-          <div className="text-xl font-semibold text-red-600 mb-4 text-center">{error}</div>
+          <div className="text-xl font-semibold text-red-600 mb-4 text-center">
+            {error}
+          </div>
           {error.includes("로그인") && (
             <button
               onClick={() => navigate("/login")}
               className="px-6 py-3 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 transition"
             >
               로그인하기
+            </button>
+          )}
+          {error.includes("나의 장학 정보") && (
+            <button
+              onClick={() => navigate("/userinfor")}
+              className="mt-3 px-6 py-3 bg-emerald-600 text-white rounded-md shadow hover:bg-emerald-700 transition"
+            >
+              나의 장학 정보 입력하러 가기
             </button>
           )}
         </div>
@@ -140,21 +250,156 @@ export default function Recommendation() {
       </h1>
 
       <div className="space-y-6">
-        {recommendations.map((s) => (
-          <article
-            key={s.product_id}
-            className="w-full bg-white border border-gray-200 rounded-lg shadow-sm p-6 hover:shadow-md transition"
-          >
-            <h3 className="text-2xl font-bold text-blue-700 mb-2">{s.name}</h3>
-            <p className="text-gray-700 mb-1">
-              <span className="font-semibold">운영기관명:</span> {s.foundation_name}
-            </p>
-            <p className="text-gray-700">
-              <span className="font-semibold">모집 기간:</span> {s.recruitment_start} ~ {s.recruitment_end}
-            </p>
-          </article>
-        ))}
+        {recommendations.map((s) => {
+          const id = s.product_id ?? s.id;
+          const isFav = favorites.has(id);
+          return (
+            <article
+              key={id}
+              className="w-full bg-white border border-gray-200 rounded-lg shadow-sm p-6 hover:shadow-md transition"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-2xl font-bold text-blue-700 mb-2">
+                    {s.name}
+                  </h3>
+                  <p className="text-gray-700 mb-1">
+                    <span className="font-semibold">운영기관명:</span>{" "}
+                    {s.foundation_name}
+                  </p>
+                  <p className="text-gray-700">
+                    <span className="font-semibold">모집 기간:</span>{" "}
+                    {s.recruitment_start} ~ {s.recruitment_end}
+                  </p>
+                </div>
+
+                {/* 우측 버튼들 */}
+                <div className="flex-shrink-0 flex items-center gap-2">
+                  <button
+                    onClick={() => openModal(s)}
+                    className="px-4 py-2 text-sm bg-gray-100 rounded-md border hover:bg-gray-200"
+                  >
+                    상세정보 보기
+                  </button>
+                  <button
+                    onClick={() => window.open(s.url, "_blank")}
+                    className="px-4 py-2 text-sm bg-sky-500 text-white rounded-md hover:bg-sky-600"
+                  >
+                    홈페이지 보기
+                  </button>
+                  <button
+                    onClick={() => toggleFavorite(s)}
+                    className={`px-3 py-2 text-lg rounded-md border ${
+                      isFav ? "bg-pink-100" : "bg-white"
+                    }`}
+                    title={isFav ? "관심 장학금에서 제거" : "관심 장학금에 추가"}
+                  >
+                    {isFav ? "❤️" : "🤍"}
+                  </button>
+                </div>
+              </div>
+            </article>
+          );
+        })}
       </div>
+
+      {/* 상세 모달 */}
+      {isModalOpen && selected && (
+        <div
+          className="fixed inset-0 bg-black/40 z-50 overflow-y-auto"
+          style={{ paddingTop: headerPad + 24, paddingBottom: 24 }}
+          onClick={closeModal}
+        >
+          <div
+            className="w-full max-w-3xl mx-auto bg-white rounded-lg shadow-xl p-6 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="absolute right-4 top-3 text-xs text-white font-bold"
+              onClick={closeModal}
+              aria-label="닫기"
+            >
+              닫기
+            </button>
+
+
+            <h2 className="text-2xl font-bold mb-4">{selected.name} 상세 정보</h2>
+
+            <div className="space-y-2 text-gray-800 max-h-[calc(100vh-200px)] overflow-y-auto">
+              <p>
+                <strong>운영기관명:</strong> {selected.foundation_name}
+              </p>
+              <p>
+                <strong>모집 기간:</strong> {selected.recruitment_start} ~{" "}
+                {selected.recruitment_end}
+              </p>
+              <p>
+                <strong>성적기준:</strong>{" "}
+                {selected.grade_criteria_details || "-"}
+              </p>
+              <p>
+                <strong>소득기준:</strong>{" "}
+                {selected.income_criteria_details || "-"}
+              </p>
+              <p>
+                <strong>지원내역:</strong> {selected.support_details || "-"}
+              </p>
+              <p>
+                <strong>특정자격:</strong>{" "}
+                {selected.specific_qualification_details || "-"}
+              </p>
+              <p>
+                <strong>지역거주여부:</strong>{" "}
+                {selected.residency_requirement_details || "-"}
+              </p>
+              <p>
+                <strong>선발방법:</strong>{" "}
+                {selected.selection_method_details || "-"}
+              </p>
+              <p>
+                <strong>선발인원:</strong>{" "}
+                {selected.number_of_recipients_details || "-"}
+              </p>
+              <p>
+                <strong>자격제한:</strong>{" "}
+                {selected.eligibility_restrictions || "-"}
+              </p>
+              <p>
+                <strong>제출서류:</strong>{" "}
+                {selected.required_documents_details || "-"}
+              </p>
+              <p>
+                <strong>홈페이지:</strong>{" "}
+                <a
+                  href={selected.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-blue-600 underline"
+                >
+                  이동하기
+                </a>
+              </p>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => window.open(selected.url, "_blank")}
+                className="px-4 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600"
+              >
+                홈페이지 보기
+              </button>
+              <button
+                onClick={() => toggleFavorite(selected)}
+                className="px-4 py-2 bg-gray-100 rounded-md border hover:bg-gray-200"
+              >
+                {favorites.has(selected.product_id ?? selected.id)
+                  ? "관심 해제"
+                  : "관심 등록"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Wrapper>
   );
 }
