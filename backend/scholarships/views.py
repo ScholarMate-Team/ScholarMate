@@ -205,18 +205,16 @@ class AddToWishlistFromAPI(APIView):
     def post(self, request):
         data = request.data
         
-        name = data.get("상품명")
-        if not name:
-            return Response({"error": "상품명(name)은 필수입니다."}, status=status.HTTP_400_BAD_REQUEST)
+        # ✅ 'product_id'를 직접 받거나, 'name'과 'foundation_name'으로 생성
+        product_id = data.get("product_id") or f'{data.get("name", "")}_{data.get("foundation_name", "")}'
 
-        foundation = data.get("운영기관명")
-        product_id = f"{name}_{foundation}"
+        if not product_id:
+            return Response({"error": "product_id 또는 장학금 정보(name, foundation_name)는 필수입니다."}, status=status.HTTP_400_BAD_REQUEST)
 
         scholarship, created = Scholarship.objects.get_or_create(product_id=product_id)
 
         if created:
-            residency_text = data.get("지역거주여부", "")
-            
+            residency_text = data.get("residency_requirement_details", "")
             processed_region = get_processed_region_from_text(residency_text)
 
             def parse_date_safely(date_str):
@@ -226,32 +224,32 @@ class AddToWishlistFromAPI(APIView):
                     except ValueError:
                         return None
                 return None
-
-            scholarship.name = name
-            scholarship.foundation_name = foundation
-            scholarship.recruitment_start = parse_date_safely(data.get("모집시작일"))
-            scholarship.recruitment_end = parse_date_safely(data.get("모집종료일"))
-            scholarship.university_type = data.get("대학구분", "")
-            scholarship.product_type = data.get("학자금유형구분", "")
-            scholarship.grade_criteria_details = data.get("성적기준 상세내용", "")
-            scholarship.income_criteria_details = data.get("소득기준 상세내용", "")
-            scholarship.support_details = data.get("지원내역 상세내용", "")
-            scholarship.specific_qualification_details = data.get("특정자격 상세내용", "")
+            
+            scholarship.name = data.get("name")
+            scholarship.foundation_name = data.get("foundation_name")
+            scholarship.recruitment_start = parse_date_safely(data.get("recruitment_start"))
+            scholarship.recruitment_end = parse_date_safely(data.get("recruitment_end"))
+            scholarship.university_type = data.get("university_type", "")
+            scholarship.product_type = data.get("product_type", "")
+            scholarship.grade_criteria_details = data.get("grade_criteria_details", "")
+            scholarship.income_criteria_details = data.get("income_criteria_details", "")
+            scholarship.support_details = data.get("support_details", "")
+            scholarship.specific_qualification_details = data.get("specific_qualification_details", "")
             scholarship.residency_requirement_details = residency_text
-            scholarship.selection_method_details = data.get("선발방법 상세내용", "")
-            scholarship.number_of_recipients_details = data.get("선발인원 상세내용", "")
-            scholarship.eligibility_restrictions = data.get("자격제한 상세내용", "")
-            scholarship.required_documents_details = data.get("제출서류 상세내용", "")
-            scholarship.recommendation_required = data.get("추천필요여부 상세내용", "") == "필요"
-            scholarship.major_field = data.get("학과구분", "")
-            scholarship.academic_year_type = data.get("학년구분", "")
-            scholarship.managing_organization_type = data.get("운영기관구분", "")
+            scholarship.selection_method_details = data.get("selection_method_details", "")
+            scholarship.number_of_recipients_details = data.get("number_of_recipients_details", "")
+            scholarship.eligibility_restrictions = data.get("eligibility_restrictions", "")
+            scholarship.required_documents_details = data.get("required_documents_details", "")
+            scholarship.recommendation_required = data.get("recommendation_required", False) 
+            scholarship.major_field = data.get("major_field", "")
+            scholarship.academic_year_type = data.get("academic_year_type", "")
+            scholarship.managing_organization_type = data.get("managing_organization_type", "")
             
             scholarship.region = processed_region
             scholarship.is_region_processed = True
             
             scholarship.save()
-            print(f"DEBUG: 새로운 장학금 '{name}' 생성 및 지역 처리 완료. 지역: '{processed_region}'")
+            print(f"DEBUG: 새로운 장학금 '{data.get('name')}' 생성 및 지역 처리 완료. 지역: '{processed_region}'")
 
         wishlist, wishlist_created = Wishlist.objects.get_or_create(user=request.user, scholarship=scholarship)
         
