@@ -187,8 +187,13 @@ export default function Wishlist() {
               <strong>제출 서류:</strong>{" "}
               {selectedScholarship.required_documents_details}
             </p>
-            <button onClick={closeModal} className="close-btn">
-              X
+             <button
+              type="button"
+              className="absolute right-4 top-3 text-xs font-bold rounded !bg-black !text-white px-2 py-1"
+              onClick={closeModal}
+              aria-label="닫기"
+            >
+              닫기
             </button>
           </div>
         </div>

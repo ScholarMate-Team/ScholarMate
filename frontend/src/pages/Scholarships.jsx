@@ -26,6 +26,25 @@ export default function Scholarships() {
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+  // ------- URL 정규화/가드 -------
+  const normalizeUrl = (u) => {
+    if (!u || typeof u !== "string") return null;
+    const trimmed = u.trim();
+    if (!trimmed || ["null", "none", "#"].includes(trimmed.toLowerCase())) return null;
+    const hasProtocol = /^https?:\/\//i.test(trimmed);
+    return hasProtocol ? trimmed : `https://${trimmed.replace(/^\/+/, "")}`;
+  };
+
+  const openHomepage = (u) => {
+    const href = normalizeUrl(u);
+    if (!href) {
+      alert("이 장학금의 홈페이지 주소가 없습니다.");
+      return;
+    }
+    window.open(href, "_blank", "noopener,noreferrer");
+  };
+  // ------------------------------
+
   const buildApiUrl = () => {
     const typeParam = scholarshipTypeMapping[selectedType] || "";
     return `${API_BASE_URL}/api/scholarships/?page=${page}&perPage=${perPage}&search=${encodeURIComponent(
@@ -42,8 +61,7 @@ export default function Scholarships() {
       if (result) {
         const dataWithIds = (result.data || []).map((item) => ({
           ...item,
-          // ✅ product_id를 사용하여 고유 키 생성
-          id: item.product_id,
+          id: item.product_id, // 고유키
         }));
         setScholarships(dataWithIds);
         setTotalCount(result.total || 0);
@@ -65,10 +83,7 @@ export default function Scholarships() {
       });
       if (res.ok) {
         const data = await res.json();
-        const ids = (data || []).map(
-          // ✅ 찜 목록 조회 시에도 새 필드명 사용
-          (item) => item.scholarship.product_id
-        );
+        const ids = (data || []).map((item) => item.scholarship.product_id);
         setFavorites(new Set(ids));
       }
     } catch (err) {
@@ -76,19 +91,16 @@ export default function Scholarships() {
     }
   };
 
-  // 헤더와 겹치지 않게 body 클래스 부여 (CSS에서 padding-top 처리)
   useEffect(() => {
     document.body.classList.add("scholarships-page");
     return () => document.body.classList.remove("scholarships-page");
   }, []);
 
-  // 목록 로딩
   useEffect(() => {
     fetchScholarships();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, selectedType, sortOrder, searchQuery]);
 
-  // 최초 1회 찜 상태 로딩
   useEffect(() => {
     fetchFavorites();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,12 +126,9 @@ export default function Scholarships() {
     setPage(1);
   };
 
-  const handleSearch = () => {
-    setPage(1);
-  };
+  const handleSearch = () => setPage(1);
 
   const handleFavoriteToggle = async (item) => {
-    // ✅ product_id를 사용하여 고유 식별자 생성
     const id = item.product_id;
     const isFavorited = favorites.has(id);
 
@@ -134,7 +143,6 @@ export default function Scholarships() {
           "Content-Type": "application/json",
           Authorization: `JWT ${localStorage.getItem("token")}`,
         },
-        // ✅ 찜 추가/제거 시에도 새 필드명 사용
         body: JSON.stringify(isFavorited ? { product_id: id, action: "remove" } : item),
       });
       const result = await response.json();
@@ -209,9 +217,7 @@ export default function Scholarships() {
               </thead>
               <tbody>
                 {scholarships.map((item) => (
-                  // ✅ `key`에 product_id 사용
-                  <tr key={item.product_id}> 
-                    {/* ✅ 백엔드 필드명에 맞게 데이터 표시 */}
+                  <tr key={item.product_id}>
                     <td>{item.foundation_name}</td>
                     <td>{item.name}</td>
                     <td>{item.recruitment_start} ~ {item.recruitment_end}</td>
@@ -222,9 +228,10 @@ export default function Scholarships() {
                     </td>
                     <td>
                       <button
-                        // ✅ 홈페이지 필드명 수정
-                        onClick={() => window.open(item.url, "_blank")}
+                        onClick={() => openHomepage(item.url)}
                         className="details-btn"
+                        disabled={!normalizeUrl(item.url)}
+                        title={!normalizeUrl(item.url) ? "홈페이지 주소가 없습니다" : "홈페이지 열기"}
                       >
                         홈페이지 보기
                       </button>
@@ -274,11 +281,8 @@ export default function Scholarships() {
             >
               닫기
             </button>
-
-            {/* ✅ 모달 제목 필드명 수정 */}
             <h2>{selectedScholarship.name} 상세 정보</h2>
             <div className="modal-body">
-              {/* ✅ 모달 내용의 필드명 모두 수정 */}
               <p><strong>성적기준:</strong> {selectedScholarship.grade_criteria_details}</p>
               <p><strong>소득기준:</strong> {selectedScholarship.income_criteria_details}</p>
               <p><strong>지원내역:</strong> {selectedScholarship.support_details}</p>
@@ -291,10 +295,13 @@ export default function Scholarships() {
               <p><strong>제출서류:</strong> {selectedScholarship.required_documents_details}</p>
               <p>
                 <strong>홈페이지:</strong>{" "}
-                {/* ✅ 홈페이지 필드명 수정 */}
-                <a href={selectedScholarship.url} target="_blank" rel="noopener noreferrer">
-                  홈페이지 이동
-                </a>
+                {normalizeUrl(selectedScholarship.url) ? (
+                  <a href={normalizeUrl(selectedScholarship.url)} target="_blank" rel="noopener noreferrer">
+                    홈페이지 이동
+                  </a>
+                ) : (
+                  <span>주소 없음</span>
+                )}
               </p>
             </div>
           </div>
