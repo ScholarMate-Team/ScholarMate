@@ -37,6 +37,28 @@ export default function Recommendation() {
 
   const navigate = useNavigate();
 
+  // ===== URL 유효성/정규화 =====
+  const resolveUrl = (u) => {
+    if (!u) return null;
+    const v = String(u).trim();
+
+    const invalid = new Set([
+      "", "#", "-", "null", "none", "n/a", "N/A",
+      "해당없음", "없음", "미정", "준비중",
+    ]);
+    if (invalid.has(v) || invalid.has(v.toLowerCase())) return null;
+
+    const withScheme = /^https?:\/\//i.test(v) ? v : `https://${v.replace(/^\/+/, "")}`;
+    try {
+      const url = new URL(withScheme);
+      if (!url.hostname || !url.hostname.includes(".")) return null;
+      return url.toString();
+    } catch {
+      return null;
+    }
+  };
+  const urlFor = (obj) => resolveUrl(obj?.url || obj?.homepage_url || obj?.link);
+
   // 헤더 높이만큼 패딩
   useLayoutEffect(() => {
     const updatePad = () => {
@@ -53,8 +75,7 @@ export default function Recommendation() {
   }, []);
 
   const API_BASE =
-    import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
-    "http://34.228.112.95";
+    import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://34.228.112.95";
 
   // 추천 로드
   useEffect(() => {
@@ -124,8 +145,8 @@ export default function Recommendation() {
         const data = await res.json();
         const ids = (data || []).map((w) => w.scholarship.product_id);
         setFavorites(new Set(ids));
-      } catch (e) {
-        // 무시 (UX 단순화)
+      } catch {
+        // 무시
       }
     };
     loadFavorites();
@@ -253,6 +274,7 @@ export default function Recommendation() {
         {recommendations.map((s) => {
           const id = s.product_id ?? s.id;
           const isFav = favorites.has(id);
+          const homepage = urlFor(s);
           return (
             <article
               key={id}
@@ -281,12 +303,26 @@ export default function Recommendation() {
                   >
                     상세정보 보기
                   </button>
-                  <button
-                    onClick={() => window.open(s.url, "_blank")}
-                    className="px-4 py-2 text-sm bg-sky-500 text-white rounded-md hover:bg-sky-600"
-                  >
-                    홈페이지 보기
-                  </button>
+
+                  {homepage ? (
+                    <a
+                      href={homepage}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 text-sm bg-sky-500 text-white rounded-md hover:bg-sky-600 inline-flex items-center justify-center"
+                    >
+                      홈페이지 보기
+                    </a>
+                  ) : (
+                    <button
+                      disabled
+                      className="px-4 py-2 text-sm bg-gray-300 text-white rounded-md cursor-not-allowed"
+                      title="홈페이지 주소가 없습니다"
+                    >
+                      홈페이지 없음
+                    </button>
+                  )}
+
                   <button
                     onClick={() => toggleFavorite(s)}
                     className={`px-3 py-2 text-lg rounded-md border ${
@@ -321,7 +357,6 @@ export default function Recommendation() {
             >
               닫기
             </button>
-
 
             <h2 className="text-2xl font-bold mb-4">{selected.name} 상세 정보</h2>
 
@@ -370,24 +405,41 @@ export default function Recommendation() {
               </p>
               <p>
                 <strong>홈페이지:</strong>{" "}
-                <a
-                  href={selected.url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="text-blue-600 underline"
-                >
-                  이동하기
-                </a>
+                {urlFor(selected) ? (
+                  <a
+                    href={urlFor(selected)}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="text-blue-600 underline"
+                  >
+                    이동하기
+                  </a>
+                ) : (
+                  <span className="text-gray-500">주소 없음</span>
+                )}
               </p>
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <button
-                onClick={() => window.open(selected.url, "_blank")}
-                className="px-4 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600"
-              >
-                홈페이지 보기
-              </button>
+              {urlFor(selected) ? (
+                <a
+                  href={urlFor(selected)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 inline-flex items-center justify-center"
+                >
+                  홈페이지 보기
+                </a>
+              ) : (
+                <button
+                  disabled
+                  className="px-4 py-2 bg-gray-300 text-white rounded-md cursor-not-allowed"
+                  title="홈페이지 주소가 없습니다"
+                >
+                  홈페이지 없음
+                </button>
+              )}
+
               <button
                 onClick={() => toggleFavorite(selected)}
                 className="px-4 py-2 bg-gray-100 rounded-md border hover:bg-gray-200"

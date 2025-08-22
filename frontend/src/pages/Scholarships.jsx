@@ -26,24 +26,26 @@ export default function Scholarships() {
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-  // ------- URL 정규화/가드 -------
+  // ------- URL 정규화/가드 (최종본) -------
   const normalizeUrl = (u) => {
     if (!u || typeof u !== "string") return null;
-    const trimmed = u.trim();
-    if (!trimmed || ["null", "none", "#"].includes(trimmed.toLowerCase())) return null;
-    const hasProtocol = /^https?:\/\//i.test(trimmed);
-    return hasProtocol ? trimmed : `https://${trimmed.replace(/^\/+/, "")}`;
-  };
+    const v = u.trim();
+    const invalid = new Set([
+      "", "#", "-", "null", "none", "n/a", "N/A",
+      "해당없음", "없음", "미정", "준비중",
+    ]);
+    if (invalid.has(v) || invalid.has(v.toLowerCase())) return null;
 
-  const openHomepage = (u) => {
-    const href = normalizeUrl(u);
-    if (!href) {
-      alert("이 장학금의 홈페이지 주소가 없습니다.");
-      return;
+    const withScheme = /^https?:\/\//i.test(v) ? v : `https://${v.replace(/^\/+/, "")}`;
+    try {
+      const url = new URL(withScheme);
+      if (!url.hostname || !url.hostname.includes(".")) return null;
+      return url.toString();
+    } catch {
+      return null;
     }
-    window.open(href, "_blank", "noopener,noreferrer");
   };
-  // ------------------------------
+  // ---------------------------------------
 
   const buildApiUrl = () => {
     const typeParam = scholarshipTypeMapping[selectedType] || "";
@@ -216,36 +218,44 @@ export default function Scholarships() {
                 </tr>
               </thead>
               <tbody>
-                {scholarships.map((item) => (
-                  <tr key={item.product_id}>
-                    <td>{item.foundation_name}</td>
-                    <td>{item.name}</td>
-                    <td>{item.recruitment_start} ~ {item.recruitment_end}</td>
-                    <td>
-                      <button onClick={() => openModal(item)} className="details-btn">
-                        상세정보 보기
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => openHomepage(item.url)}
-                        className="details-btn"
-                        disabled={!normalizeUrl(item.url)}
-                        title={!normalizeUrl(item.url) ? "홈페이지 주소가 없습니다" : "홈페이지 열기"}
-                      >
-                        홈페이지 보기
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleFavoriteToggle(item)}
-                        className={`favorite-btn ${favorites.has(item.product_id) ? "favorited" : ""}`}
-                      >
-                        {favorites.has(item.product_id) ? "❤️" : "🤍"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {scholarships.map((item) => {
+                  const href = normalizeUrl(item.url);
+                  return (
+                    <tr key={item.product_id}>
+                      <td>{item.foundation_name}</td>
+                      <td>{item.name}</td>
+                      <td>{item.recruitment_start} ~ {item.recruitment_end}</td>
+                      <td>
+                        <button onClick={() => openModal(item)} className="details-btn">
+                          상세정보 보기
+                        </button>
+                      </td>
+                      <td>
+                        {href ? (
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="details-btn inline-flex items-center justify-center"
+                            title="홈페이지 열기"
+                          >
+                            홈페이지 보기
+                          </a>
+                        ) : (
+                          <span className="text-gray-400">홈페이지 없음</span>
+                        )}
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => handleFavoriteToggle(item)}
+                          className={`favorite-btn ${favorites.has(item.product_id) ? "favorited" : ""}`}
+                        >
+                          {favorites.has(item.product_id) ? "❤️" : "🤍"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 
