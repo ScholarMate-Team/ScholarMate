@@ -13,6 +13,10 @@ import CalendarPage from "./pages/Calendar";
 import isTokenExpired from "./api/auth"; 
 import Recommendation from "./pages/Recommendation";
 import CommunityPage from "./pages/CommunityPage";
+import Introduction from "./pages/Introduction";  
+import NoticeList from "./pages/NoticeList";
+import NoticeDetail from "./pages/NoticeDetail";
+import CommunityDetail from "./pages/CommunityDetail";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -130,6 +134,10 @@ export default function App() {
           <Route path="/profile" element={isLoggedIn ? <Profile /> : <Navigate to="/login" />} />
           <Route path="/login" element={isLoggedIn ? <Navigate to="/" /> : <Login onLogin={handleLogin} />} />
           <Route path="/register" element={isLoggedIn ? <Navigate to="/" /> : <Register />} />
+          <Route path="/introduction" element={<Introduction />} />
+          <Route path="/notice" element={<NoticeList />} />
+          <Route path="/notice/:id" element={<NoticeDetail />} />
+          <Route path="/community/:id" element={<CommunityDetail />} />
         </Routes>
       </main>
     </>

@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const DUMMY_RECOMMENDATIONS = [
@@ -76,6 +76,24 @@ export default function Recommendation() {
 
   const API_BASE =
     import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://34.228.112.95";
+
+  // ===== 토스트 (성공/에러 안내 배너) =====
+  const [toast, setToast] = useState({ open: false, message: "", type: "success" }); // type: 'success' | 'error' | 'info'
+  const toastTimerRef = useRef(null);
+
+  const showToast = (message, type = "success", duration = 2000) => {
+    // 기존 타이머 정리
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ open: true, message, type });
+    toastTimerRef.current = setTimeout(() => {
+      setToast((t) => ({ ...t, open: false }));
+      toastTimerRef.current = null;
+    }, duration);
+  };
+
+  useEffect(() => () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+  }, []);
 
   // 추천 로드
   useEffect(() => {
@@ -168,7 +186,7 @@ export default function Recommendation() {
     const isFavorited = favorites.has(id);
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("로그인이 필요합니다.");
+      showToast("로그인이 필요합니다.", "error");
       return;
     }
 
@@ -193,12 +211,17 @@ export default function Recommendation() {
 
       setFavorites((prev) => {
         const updated = new Set(prev);
-        if (isFavorited) updated.delete(id);
-        else updated.add(id);
+        if (isFavorited) {
+          updated.delete(id);
+          showToast("관심 장학금에서 삭제되었습니다.", "info");
+        } else {
+          updated.add(id);
+          showToast("관심 장학금에 추가되었습니다.", "success");
+        }
         return updated;
       });
     } catch (e) {
-      alert(e.message || "찜 처리 중 오류가 발생했습니다.");
+      showToast(e.message || "찜 처리 중 오류가 발생했습니다.", "error", 2500);
     }
   };
 
@@ -213,6 +236,33 @@ export default function Recommendation() {
           {children}
         </section>
       </div>
+
+      {/* 토스트 UI */}
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        className="fixed bottom-6 right-6 z-[60]"
+      >
+        {toast.open && (
+          <div
+            className={[
+              "min-w-[240px] max-w-[360px] px-4 py-3 rounded-lg shadow-lg border text-sm",
+              "animate-[fadeIn_.15s_ease-out]",
+              toast.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-900" :
+              toast.type === "error" ? "bg-red-50 border-red-200 text-red-900" :
+              "bg-sky-50 border-sky-200 text-sky-900",
+            ].join(" ")}
+            role="status"
+          >
+            {toast.message}
+          </div>
+        )}
+      </div>
+
+      {/* 간단한 키프레임 (Tailwind 임시) */}
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </main>
   );
 

@@ -1,7 +1,8 @@
 import Slider from "react-slick";
+import { useNavigate } from "react-router-dom";
 import sliderImage1 from "../assets/img/main.jpg";
 import sliderImage2 from "../assets/img/배너.jpg";
-import "../assets/css/Slider.css";
+import "../assets/css/slider.css";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
@@ -9,22 +10,24 @@ import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 function NextArrow(props) {
   const { onClick } = props;
   return (
-    <div className="arrow next" onClick={onClick}>
-      <FaChevronRight size={24} />
-    </div>
+    <button type="button" className="arrow next" onClick={onClick} aria-label="다음 슬라이드">
+      <FaChevronRight size={22} />
+    </button>
   );
 }
 
 function PrevArrow(props) {
   const { onClick } = props;
   return (
-    <div className="arrow prev" onClick={onClick}>
-      <FaChevronLeft size={24} />
-    </div>
+    <button type="button" className="arrow prev" onClick={onClick} aria-label="이전 슬라이드">
+      <FaChevronLeft size={22} />
+    </button>
   );
 }
 
 export default function SliderSection() {
+  const navigate = useNavigate();
+
   const settings = {
     dots: true,
     infinite: true,
@@ -35,6 +38,8 @@ export default function SliderSection() {
     autoplaySpeed: 10000,
     nextArrow: <NextArrow />,
     prevArrow: <PrevArrow />,
+    pauseOnHover: true,
+    adaptiveHeight: false,
   };
 
   const slides = [
@@ -47,6 +52,7 @@ export default function SliderSection() {
           더 많은 학생들에게 교육의 평등성을 제공하는 것을 목표로 합니다.
         </>
       ),
+      cta: { label: "자세히 알아보기", to: "/introduction" }, // ✅ 변경
     },
     {
       img: sliderImage2,
@@ -57,6 +63,7 @@ export default function SliderSection() {
           AI가 당신에게 가장 적합한 장학금을 추천해드립니다.
         </>
       ),
+      cta: { label: "추천 받기", to: "/recommendation" },
     },
   ];
 
@@ -68,14 +75,18 @@ export default function SliderSection() {
             <div
               className="slider__img"
               style={{ backgroundImage: `url(${slide.img})` }}
+              role="img"
+              aria-label={slide.title}
             >
+              <div className="slider__overlay" />
               <div className="desc text-white text-center">
-                <h3 className="text-4xl md:text-6xl font-bold mb-4">
-                  {slide.title}
-                </h3>
+                <h3 className="text-4xl md:text-6xl font-bold mb-4">{slide.title}</h3>
                 <p className="text-lg md:text-xl mb-6">{slide.desc}</p>
-                <button className="bg-black text-white font-bold px-6 py-3 rounded-lg shadow-md hover:bg-gray-800 hover:scale-105 transition duration-300">
-                  자세히 알아보기
+                <button
+                  onClick={() => navigate(slide.cta.to)}
+                  className="bg-black/80 text-white font-bold px-6 py-3 rounded-lg shadow-md hover:bg-black hover:scale-105 transition duration-300"
+                >
+                  {slide.cta.label}
                 </button>
               </div>
             </div>
