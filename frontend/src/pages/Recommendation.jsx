@@ -294,7 +294,7 @@ export default function Recommendation() {
           {error.includes("나의 장학 정보") && (
             <button
               onClick={() => navigate("/userinfor")}
-              className="mt-3 px-6 py-3 bg-emerald-600 text-white rounded-md shadow hover:bg-emerald-700 transition"
+              className="mt-3 px-6 py-3 bg-gray-900 text-white rounded-md shadow hover:bg-blue-500 transition"
             >
               나의 장학 정보 입력하러 가기
             </button>
