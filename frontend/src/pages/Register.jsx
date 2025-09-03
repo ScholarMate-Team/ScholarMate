@@ -14,13 +14,14 @@ export default function Register() {
   const [infoMessage, setInfoMessage] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [sending, setSending] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const navigate = useNavigate();
 
   // 타이머
   useEffect(() => {
     if (secondsLeft <= 0) return;
-    const id = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
+    const id = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(id);
   }, [secondsLeft]);
 
@@ -31,84 +32,106 @@ export default function Register() {
   };
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  // 인증번호 전송: 백엔드 호출
+  // 인증번호 전송
   const handleSendCode = async () => {
-    if (!form.email) {
+    const email = form.email.trim();
+    if (!email) {
       setErrorMessage("이메일을 입력해 주세요.");
       return;
     }
+    setSending(true);
+    setErrorMessage("");
+    setInfoMessage("");
     try {
-      setSending(true);
-      setErrorMessage("");
-      const res = await axios.post("/auth/email/send-code/", { email: form.email });
+      const res = await axios.post("/auth/email/send-code/", { email });
       const ttl = res?.data?.ttl ?? 120;
       setSecondsLeft(ttl);
       setInfoMessage("인증번호를 전송했어요. 제한시간 안에 입력해 주세요.");
     } catch (e) {
-      const msg =
-        e.response?.data?.detail ||
-        "인증번호 전송 실패. 다시 시도해 주세요.";
+      const msg = e?.response?.data?.detail || "인증번호 전송 실패. 다시 시도해 주세요.";
       setErrorMessage(msg);
     } finally {
       setSending(false);
     }
   };
 
-  // 회원가입: 코드 검증 → 가입
+  // 회원가입: 이메일 코드 검증 → 가입
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+
+    const username = form.username.trim();
+    const password = form.password;
+    const confirmPassword = form.confirmPassword;
+    const email = form.email.trim();
+    const code = form.code.trim();
+
     setErrorMessage("");
     setInfoMessage("");
 
-    if (form.password !== form.confirmPassword) {
+    if (!username || !email || !password || !confirmPassword || !code) {
+      setErrorMessage("모든 항목을 입력해 주세요.");
+      return;
+    }
+    if (password !== confirmPassword) {
       setErrorMessage("비밀번호가 일치하지 않습니다.");
       return;
     }
+    if (password.length < 8) {
+      setErrorMessage("비밀번호는 8자 이상이어야 합니다.");
+      return;
+    }
 
+    setSubmitting(true);
     try {
-      // 1) 이메일 인증번호 검증
-      await axios.post("/auth/email/verify/", {
-        email: form.email,
-        code: form.code,
-      });
+      // 1) 이메일 인증번호 검증 (엔드포인트 교정!)
+      await axios.post("/auth/email/verify-code/", { email, code });
 
       // 2) 검증 성공 시 회원가입
       await axios.post("/auth/users/", {
-        username: form.username,
-        password: form.password,
-        email: form.email,
+        username,
+        password,
+        email,
       });
 
       alert("회원가입 성공! 로그인 페이지로 이동합니다.");
       navigate("/login");
     } catch (error) {
-      // verify 단계 에러 우선 표시
-      const detail = error.response?.data?.detail;
+      // verify 단계 에러 우선
+      const detail = error?.response?.data?.detail;
       if (detail) {
         setErrorMessage(detail);
-        return;
-      }
-
-      if (error.response?.data?.username) {
+      } else if (error?.response?.data?.username) {
         setErrorMessage("이미 가입된 아이디입니다.");
-      } else if (error.response?.data?.password) {
-        setErrorMessage("비밀번호는 8자리 이상이어야 합니다.");
-      } else if (error.response?.data?.email) {
-        setErrorMessage(
+      } else if (error?.response?.data?.password) {
+        const msg =
+          Array.isArray(error.response.data.password)
+            ? error.response.data.password[0]
+            : "비밀번호 정책을 확인해 주세요.";
+        setErrorMessage(msg);
+      } else if (error?.response?.data?.email) {
+        const msg =
           typeof error.response.data.email === "string"
             ? error.response.data.email
-            : "유효하지 않은 이메일 형식이거나 인증이 필요합니다."
-        );
+            : "유효하지 않은 이메일 형식이거나 인증이 필요합니다.";
+        setErrorMessage(msg);
       } else {
-        setErrorMessage("회원가입 실패: " + JSON.stringify(error.response?.data));
+        setErrorMessage(
+          "회원가입 실패: " +
+            (error?.response?.status
+              ? `${error.response.status} ${JSON.stringify(error.response.data)}`
+              : "네트워크 오류")
+        );
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const canSend = !sending && secondsLeft === 0 && !!form.email;
+  const canSend = !sending && secondsLeft === 0 && !!form.email.trim();
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50">
@@ -118,7 +141,7 @@ export default function Register() {
         </h1>
 
         {errorMessage && (
-          <p className="text-red-500 text-center mb-4">{errorMessage}</p>
+          <p className="text-red-500 text-center mb-4 whitespace-pre-wrap">{errorMessage}</p>
         )}
         {infoMessage && (
           <p className="text-teal-600 text-center mb-4">{infoMessage}</p>
@@ -175,9 +198,7 @@ export default function Register() {
               onClick={handleSendCode}
               disabled={!canSend}
               className={`px-3 py-2 rounded text-white transition ${
-                canSend
-                  ? "bg-gray-900 hover:bg-blue-500"
-                  : "bg-gray-900 cursor-not-allowed"
+                canSend ? "bg-gray-900 hover:bg-blue-500" : "bg-gray-900/60 cursor-not-allowed"
               }`}
             >
               {secondsLeft > 0 ? mmss(secondsLeft) : sending ? "전송 중..." : "인증번호 받기"}
@@ -189,6 +210,7 @@ export default function Register() {
             name="code"
             placeholder="인증번호 입력"
             onChange={handleChange}
+            required
             className="w-full bg-white border border-gray-300 rounded px-3 py-2 
                        text-gray-900 placeholder-gray-400 
                        focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
@@ -196,9 +218,10 @@ export default function Register() {
           {/* 회원가입 버튼 */}
           <button
             type="submit"
-            className="w-full bg-gray-900 text-white py-2 rounded font-semibold hover:bg-blue-500 transition"
+            disabled={submitting}
+            className="w-full bg-gray-900 text-white py-2 rounded font-semibold hover:bg-blue-500 transition disabled:opacity-60"
           >
-            회원가입
+            {submitting ? "처리 중..." : "회원가입"}
           </button>
         </form>
 
