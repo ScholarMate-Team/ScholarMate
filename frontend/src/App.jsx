@@ -17,6 +17,7 @@ import Introduction from "./pages/Introduction";
 import NoticeList from "./pages/NoticeList";
 import NoticeDetail from "./pages/NoticeDetail";
 import CommunityDetail from "./pages/CommunityDetail";
+import 'antd/dist/reset.css';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
