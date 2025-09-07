@@ -268,9 +268,22 @@ def recommend(user_id: int) -> QuerySet:
     print(f"DEBUG: [전체 프로세스 시작] 사용자 ID: {user_id}")
     try:
         user_profile = UserScholarship.objects.get(user_id=user_id)
+        
+        # ✅ 필수 필드 누락 여부 확인
+        required_fields = [
+            'birth_date', 'region', 'district', 'income_level',
+            'university_type', 'university_name', 'major_field',
+            'academic_year_type', 'semester', 'gpa_last_semester', 'gpa_overall'
+        ]
+        
+        for field in required_fields:
+            if not getattr(user_profile, field):
+                print(f"경고: 필수 프로필 정보가 누락되었습니다. ('{field}' 필드)")
+                return False
+
     except UserScholarship.DoesNotExist:
         print(f"오류: 사용자 ID {user_id}에 해당하는 프로필을 찾을 수 없습니다.")
-        return Scholarship.objects.none()
+        return False
 
     scholarships = Scholarship.objects.all()
     # scholarships = filter_scholarships_by_date(scholarships) # 1. 날짜 필터링 (필요시 활성화)

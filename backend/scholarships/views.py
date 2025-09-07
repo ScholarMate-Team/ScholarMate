@@ -281,28 +281,17 @@ def get_recommended_scholarships_api(request):
     print(f"DEBUG: [get_recommended_scholarships_api] 호출됨. 사용자: {request.user.username}, ID: {request.user.id}")
 
     try:
-        try:
-            user_profile = UserScholarship.objects.get(user=request.user)
-            full_region = ' '.join(filter(None, [user_profile.region, user_profile.district]))
-
-            print(f"DEBUG: [get_recommended_scholarships_api] 사용자 프로필 로드 성공: {user_profile.name}, 대학: '{user_profile.university_type}', 학년 유형: '{user_profile.academic_year_type}', 학과: '{user_profile.major_field}', 지역: '{full_region}'")
-        except UserScholarship.DoesNotExist:
-            print(f"오류: [get_recommended_scholarships_api] 사용자 ID {request.user.id}에 해당하는 UserScholarship 프로필이 없습니다.")
-            return Response(
-                {'error': '사용자 프로필을 찾을 수 없습니다. 장학금 추천을 위해 프로필을 먼저 작성해주세요.'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        except Exception as e:
-            print(f"오류: [get_recommended_scholarships_api] UserScholarship 조회 중 예상치 못한 오류 발생: {e}")
-            import traceback
-            traceback.print_exc()
-            return Response(
-                {'error': '사용자 프로필 조회 중 오류가 발생했습니다.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-        recommended_scholarships_queryset = recommend(request.user.id) 
+        recommended_scholarships_queryset = recommend(request.user.id)
         
+        # ✅ recommendation.py의 recommend 함수가 False를 반환할 때 처리
+        if recommended_scholarships_queryset is False:
+            print("경고: [get_recommended_scholarships_api] 사용자 프로필이 불완전하여 추천을 중단합니다.")
+            return Response(
+                {'error': '나의 장학 정보를 모두 작성해주세요.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 기존 로직: 정상적인 경우에만 추천 데이터 생성 및 반환
         recommended_scholarships_data = [
             scholarship.to_dict() for scholarship in recommended_scholarships_queryset
         ]
@@ -310,6 +299,12 @@ def get_recommended_scholarships_api(request):
 
         return Response({'scholarships': recommended_scholarships_data}, status=status.HTTP_200_OK)
 
+    except UserScholarship.DoesNotExist:
+        print(f"오류: [get_recommended_scholarships_api] 사용자 ID {request.user.id}에 해당하는 UserScholarship 프로필이 없습니다.")
+        return Response(
+            {'error': '사용자 프로필을 찾을 수 없습니다. 장학금 추천을 위해 프로필을 먼저 작성해주세요.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
     except Exception as e:
         print(f"오류: [get_recommended_scholarships_api] 장학금 추천 API 실행 중 최종 오류 발생: {e}")
         import traceback
