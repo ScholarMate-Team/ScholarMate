@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const DUMMY_RECOMMENDATIONS = [
@@ -37,6 +37,28 @@ export default function Recommendation() {
 
   const navigate = useNavigate();
 
+  // ===== URL 유효성/정규화 =====
+  const resolveUrl = (u) => {
+    if (!u) return null;
+    const v = String(u).trim();
+
+    const invalid = new Set([
+      "", "#", "-", "null", "none", "n/a", "N/A",
+      "해당없음", "없음", "미정", "준비중",
+    ]);
+    if (invalid.has(v) || invalid.has(v.toLowerCase())) return null;
+
+    const withScheme = /^https?:\/\//i.test(v) ? v : `https://${v.replace(/^\/+/, "")}`;
+    try {
+      const url = new URL(withScheme);
+      if (!url.hostname || !url.hostname.includes(".")) return null;
+      return url.toString();
+    } catch {
+      return null;
+    }
+  };
+  const urlFor = (obj) => resolveUrl(obj?.url || obj?.homepage_url || obj?.link);
+
   // 헤더 높이만큼 패딩
   useLayoutEffect(() => {
     const updatePad = () => {
@@ -53,8 +75,25 @@ export default function Recommendation() {
   }, []);
 
   const API_BASE =
-    import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
-    "http://34.228.112.95";
+    import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://34.228.112.95";
+
+  // ===== 토스트 (성공/에러 안내 배너) =====
+  const [toast, setToast] = useState({ open: false, message: "", type: "success" }); // type: 'success' | 'error' | 'info'
+  const toastTimerRef = useRef(null);
+
+  const showToast = (message, type = "success", duration = 2000) => {
+    // 기존 타이머 정리
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ open: true, message, type });
+    toastTimerRef.current = setTimeout(() => {
+      setToast((t) => ({ ...t, open: false }));
+      toastTimerRef.current = null;
+    }, duration);
+  };
+
+  useEffect(() => () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+  }, []);
 
   // 추천 로드
   useEffect(() => {
@@ -124,8 +163,8 @@ export default function Recommendation() {
         const data = await res.json();
         const ids = (data || []).map((w) => w.scholarship.product_id);
         setFavorites(new Set(ids));
-      } catch (e) {
-        // 무시 (UX 단순화)
+      } catch {
+        // 무시
       }
     };
     loadFavorites();
@@ -147,7 +186,7 @@ export default function Recommendation() {
     const isFavorited = favorites.has(id);
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("로그인이 필요합니다.");
+      showToast("로그인이 필요합니다.", "error");
       return;
     }
 
@@ -172,12 +211,17 @@ export default function Recommendation() {
 
       setFavorites((prev) => {
         const updated = new Set(prev);
-        if (isFavorited) updated.delete(id);
-        else updated.add(id);
+        if (isFavorited) {
+          updated.delete(id);
+          showToast("관심 장학금에서 삭제되었습니다.", "info");
+        } else {
+          updated.add(id);
+          showToast("관심 장학금에 추가되었습니다.", "success");
+        }
         return updated;
       });
     } catch (e) {
-      alert(e.message || "찜 처리 중 오류가 발생했습니다.");
+      showToast(e.message || "찜 처리 중 오류가 발생했습니다.", "error", 2500);
     }
   };
 
@@ -192,6 +236,33 @@ export default function Recommendation() {
           {children}
         </section>
       </div>
+
+      {/* 토스트 UI */}
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        className="fixed bottom-6 right-6 z-[60]"
+      >
+        {toast.open && (
+          <div
+            className={[
+              "min-w-[240px] max-w-[360px] px-4 py-3 rounded-lg shadow-lg border text-sm",
+              "animate-[fadeIn_.15s_ease-out]",
+              toast.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-900" :
+              toast.type === "error" ? "bg-red-50 border-red-200 text-red-900" :
+              "bg-sky-50 border-sky-200 text-sky-900",
+            ].join(" ")}
+            role="status"
+          >
+            {toast.message}
+          </div>
+        )}
+      </div>
+
+      {/* 간단한 키프레임 (Tailwind 임시) */}
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </main>
   );
 
@@ -223,7 +294,7 @@ export default function Recommendation() {
           {error.includes("나의 장학 정보") && (
             <button
               onClick={() => navigate("/userinfor")}
-              className="mt-3 px-6 py-3 bg-emerald-600 text-white rounded-md shadow hover:bg-emerald-700 transition"
+              className="mt-3 px-6 py-3 bg-gray-900 text-white rounded-md shadow hover:bg-blue-500 transition"
             >
               나의 장학 정보 입력하러 가기
             </button>
@@ -253,6 +324,7 @@ export default function Recommendation() {
         {recommendations.map((s) => {
           const id = s.product_id ?? s.id;
           const isFav = favorites.has(id);
+          const homepage = urlFor(s);
           return (
             <article
               key={id}
@@ -281,12 +353,26 @@ export default function Recommendation() {
                   >
                     상세정보 보기
                   </button>
-                  <button
-                    onClick={() => window.open(s.url, "_blank")}
-                    className="px-4 py-2 text-sm bg-sky-500 text-white rounded-md hover:bg-sky-600"
-                  >
-                    홈페이지 보기
-                  </button>
+
+                  {homepage ? (
+                    <a
+                      href={homepage}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 text-sm bg-sky-500 text-white rounded-md hover:bg-sky-600 inline-flex items-center justify-center"
+                    >
+                      홈페이지 보기
+                    </a>
+                  ) : (
+                    <button
+                      disabled
+                      className="px-4 py-2 text-sm bg-gray-300 text-white rounded-md cursor-not-allowed"
+                      title="홈페이지 주소가 없습니다"
+                    >
+                      홈페이지 없음
+                    </button>
+                  )}
+
                   <button
                     onClick={() => toggleFavorite(s)}
                     className={`px-3 py-2 text-lg rounded-md border ${
@@ -321,7 +407,6 @@ export default function Recommendation() {
             >
               닫기
             </button>
-
 
             <h2 className="text-2xl font-bold mb-4">{selected.name} 상세 정보</h2>
 
@@ -370,24 +455,41 @@ export default function Recommendation() {
               </p>
               <p>
                 <strong>홈페이지:</strong>{" "}
-                <a
-                  href={selected.url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="text-blue-600 underline"
-                >
-                  이동하기
-                </a>
+                {urlFor(selected) ? (
+                  <a
+                    href={urlFor(selected)}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="text-blue-600 underline"
+                  >
+                    이동하기
+                  </a>
+                ) : (
+                  <span className="text-gray-500">주소 없음</span>
+                )}
               </p>
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <button
-                onClick={() => window.open(selected.url, "_blank")}
-                className="px-4 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600"
-              >
-                홈페이지 보기
-              </button>
+              {urlFor(selected) ? (
+                <a
+                  href={urlFor(selected)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 inline-flex items-center justify-center"
+                >
+                  홈페이지 보기
+                </a>
+              ) : (
+                <button
+                  disabled
+                  className="px-4 py-2 bg-gray-300 text-white rounded-md cursor-not-allowed"
+                  title="홈페이지 주소가 없습니다"
+                >
+                  홈페이지 없음
+                </button>
+              )}
+
               <button
                 onClick={() => toggleFavorite(selected)}
                 className="px-4 py-2 bg-gray-100 rounded-md border hover:bg-gray-200"
