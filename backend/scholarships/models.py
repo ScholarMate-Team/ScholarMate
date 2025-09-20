@@ -2,6 +2,42 @@
 from django.db import models
 from django.contrib.auth.models import User # User 모델 import 필요 (Wishlist에 사용됨)
 
+class RawScholarship(models.Model):
+    # 기본 정보
+    product_id = models.CharField(max_length=50, unique=True, verbose_name="고유 번호")
+    name = models.CharField(max_length=255, verbose_name="장학금 이름")
+    product_type = models.CharField(max_length=100, verbose_name="장학금 유형")
+
+    # 모집 및 기간
+    recruitment_start = models.DateField(verbose_name="모집 시작일", null=True, blank=True)
+    recruitment_end = models.DateField(verbose_name="모집 종료일", null=True, blank=True)
+
+    # 대상 및 자격 조건
+    university_type = models.CharField(max_length=100, null=True, blank=True, verbose_name="대학 유형")
+    academic_year_type = models.CharField(max_length=255, null=True, blank=True, verbose_name="학년 유형")
+    major_field = models.CharField(max_length=255, null=True, blank=True, verbose_name="학과 구분")
+    residency_requirement_details = models.TextField(null=True, blank=True, verbose_name="지역 조건 상세")
+    grade_criteria_details = models.TextField(null=True, blank=True, verbose_name="성적 기준 상세")
+    income_criteria_details = models.TextField(null=True, blank=True, verbose_name="소득 기준 상세")
+    specific_qualification_details = models.TextField(null=True, blank=True, verbose_name="특정 자격 조건 상세")
+    eligibility_restrictions = models.TextField(null=True, blank=True, verbose_name="자격 제한")
+
+    # 기타 정보
+    managing_organization_type = models.CharField(max_length=255, null=True, blank=True, verbose_name="운영 기관 구분")
+    foundation_name = models.CharField(max_length=255, null=True, blank=True, verbose_name="운영 기관 이름")
+    selection_method_details = models.TextField(null=True, blank=True, verbose_name="선발 기준 및 절차")
+    number_of_recipients_details = models.TextField(null=True, blank=True, verbose_name="선발 인원 상세")
+    required_documents_details = models.TextField(null=True, blank=True, verbose_name="제출 서류 상세")
+    support_details = models.TextField(null=True, blank=True, verbose_name="지원금액 상세")
+    recommendation_required = models.BooleanField(default=False, verbose_name="추천서 필요 여부")
+    url = models.URLField(max_length=500, null=True, blank=True, verbose_name="홈페이지 주소")
+
+    class Meta:
+        verbose_name = "원본 장학금"
+        verbose_name_plural = "원본 장학금 목록"
+
+    def __str__(self):
+        return self.name
 class Scholarship(models.Model):
     # 기본 정보
     product_id = models.CharField(max_length=50, unique=True, verbose_name="고유 번호")  # 고유 번호
