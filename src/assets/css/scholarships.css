@@ -1,0 +1,487 @@
+/* =========================
+   ScholarMate - Unified CSS
+   (scholarships + wishlist + modal)
+   ========================= */
+:root{
+  /* Colors */
+  --primary:#008cba;
+  --primary-hover:#005f87;
+  --brand-blue:#0b5ed7;
+  --text:#111;
+  --muted:#ddd;
+  --bg-soft:#f4f4f4;
+  --overlay:rgba(0,0,0,0.6);
+
+  /* Spacing / layout */
+  --container-max:1200px;
+  --header-offset:100px;
+  --modal-top-pad:120px;
+  --modal-side-pad:16px;
+}
+
+/* ---------- Scholarships ---------- */
+.scholarships-container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 20px 20px 40px; 
+}
+
+.scholarships-container h1 {
+  font-size: 1.8rem;
+  margin: 10px 0 16px;
+  text-align: center;
+}
+
+/* ---------- Search & filter ---------- */
+.search-and-filter{
+  display:flex;
+  gap:10px;
+  margin-bottom:20px;
+  flex-wrap:wrap;
+}
+
+.search-input{
+  flex:1;
+  padding:10px;
+  font-size:1rem;
+  border:2px solid var(--primary);
+  border-radius:5px;
+  background:#fff;
+  color:#000;
+  outline:none;
+  transition:border-color .3s;
+}
+.search-input:focus{ border-color:var(--primary-hover); }
+
+.filter-dropdown,
+.sort-dropdown{
+  padding:10px 15px;
+  font-size:1rem;
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+  transition:background-color .3s;
+}
+.filter-dropdown:hover,
+.sort-dropdown:hover{ background:var(--primary-hover); }
+
+/* ---------- Table ---------- */
+.scholarships-table{
+  width:100%;
+  border-collapse:collapse;
+  margin-bottom:20px;
+}
+
+.scholarships-table th,
+.scholarships-table td{
+  border:1px solid var(--muted);
+  padding:10px;
+  text-align:left;
+  font-size:.9rem;
+}
+
+.scholarships-table th{
+  background:var(--bg-soft);
+  font-weight:700;
+}
+
+.scholarships-table th:nth-child(2),
+.scholarships-table td:nth-child(2){ font-weight:700; }
+.scholarships-table td:nth-child(2){ color:var(--brand-blue); }
+
+/* ---------- Buttons ---------- */
+.details-btn{
+  color:#fff;
+  background:var(--primary);
+  padding:5px 10px;
+  text-decoration:none;
+  border-radius:5px;
+  white-space:nowrap;
+}
+
+.favorite-btn{
+  background:none;
+  border:none;
+  cursor:pointer;
+  font-size:1.1rem;
+  outline:none;
+}
+.favorite-btn:focus{ outline:none; }
+.favorite-btn.favorited{ color:red; }
+
+/* ---------- Pagination ---------- */
+.pagination{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  margin-top:20px;
+}
+.pagination button{
+  padding:8px 12px;
+  border:1px solid #ccc;
+  cursor:pointer;
+  transition:background-color .3s;
+}
+.pagination button:hover{ background:#e0e0e0; }
+.pagination button:disabled{
+  cursor:not-allowed;
+  opacity:.5;
+}
+
+/* ---------- Modal ---------- */
+.modal-overlay{
+  position:fixed;
+  inset:0;
+  background:var(--overlay);
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  z-index:1000;
+  padding-top:var(--modal-top-pad);
+  padding-bottom:24px;
+}
+
+.modal-content{
+  position:relative;
+  width:min(720px, 92vw);
+  margin:0 var(--modal-side-pad);
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.2);
+  padding:20px;
+  text-align:left;
+  -webkit-overflow-scrolling:touch;
+  max-height:calc(100vh - (var(--modal-top-pad) + 24px));
+  overflow-y:auto;
+}
+
+.modal-content h2{
+  margin:0 0 12px 0;
+  padding-right:48px;
+  text-align:center;
+  font-weight:800;
+  font-size:1.15rem;
+  color:var(--brand-blue);
+}
+
+.modal-body{
+  padding-right:4px;
+  line-height:1.6;
+  font-size:.95rem;
+}
+
+/* Close button */
+.modal-close{
+  position:absolute;
+  top:10px;
+  right:10px;
+  width:36px;
+  height:36px;
+  border:none;
+  border-radius:9999px;
+  background:#e5e7eb;
+  color:var(--text);
+  font-size:16px;
+  line-height:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  z-index:2;
+}
+.modal-close:hover{ background:#d1d5db; }
+
+/* ---------- Wishlist ---------- */
+.wishlist-wrapper{
+  max-width:900px;
+  margin:20px auto;
+  text-align:center;
+  min-height:550px;
+}
+
+.wishlist-table-container{
+  max-height:500px;
+  overflow-y:auto;
+  border:1px solid #ccc;
+  margin-top:20px;
+  border-radius:8px;
+}
+
+.wishlist-table{ width:100%; border-collapse:collapse; }
+.wishlist-table thead th{
+  position:sticky; top:0; background:#f0f0f0; z-index:2;
+}
+.wishlist-table th,
+.wishlist-table td{
+  padding:12px;
+  border:1px solid #ddd;
+  font-size:.95rem;
+  text-align:center;
+}
+
+/* ✅ Wishlist 모바일 카드형 */
+.wishlist-card{
+  background:#fff;
+  border:1px solid #ddd;
+  border-radius:8px;
+  padding:12px;
+  text-align:left;
+  box-shadow:0 1px 3px rgba(0,0,0,0.08);
+}
+.wishlist-card .foundation{
+  font-size:.75rem;
+  color:#6b7280;
+  margin-bottom:2px;
+}
+.wishlist-card .title{
+  font-size:.9rem;
+  font-weight:600;
+  color:var(--brand-blue);
+  margin-bottom:4px;
+}
+.wishlist-card .period{
+  font-size:.75rem;
+  color:#444;
+  margin-bottom:6px;
+}
+.wishlist-card .actions{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:.75rem;
+}
+.wishlist-card .actions a{
+  color:#2563eb;
+  text-decoration:underline;
+}
+.wishlist-card .actions button{
+  font-size:.7rem;
+  padding:3px 6px;
+  border-radius:4px;
+}
+.wishlist-card .actions .delete{
+  background:#ef4444;
+  color:#fff;
+}
+.wishlist-card .actions .delete:hover{
+  background:#dc2626;
+}
+.wishlist-card .actions .detail{
+  background:#f3f4f6;
+  color:#111;
+}
+.wishlist-card .actions .detail:hover{
+  background:#e5e7eb;
+}
+
+.delete-btn{
+  color:#fff;
+  background:#ff4d4d;
+  padding:5px 10px;
+  margin-left:8px;
+  border-radius:5px;
+  border:none;
+  cursor:pointer;
+}
+.delete-btn:hover{ background:#cc0000; }
+
+/* ===== Toast ===== */
+.toast-root {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 60;
+}
+.toast-card {
+  min-width: 240px;
+  max-width: 360px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.12);
+  border: 1px solid;
+  font-size: 14px;
+  animation: fadeIn .15s ease-out;
+}
+.toast-success { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+.toast-error   { background: #fef2f2; border-color: #fecaca; color: #7f1d1d; }
+.toast-info    { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+
+/* ===== Search buttons ===== */
+.search-btn{
+  padding:10px 14px;
+  border:none;
+  border-radius:6px;
+  background:#111;
+  color:#fff;
+  font-weight:600;
+  cursor:pointer;
+  transition:opacity .2s, transform .02s;
+}
+.search-btn:hover{ opacity:.9; }
+.search-btn:active{ transform:translateY(1px); }
+
+.search-clear-btn{
+  padding:10px 12px;
+  border:1px solid #d1d5db;
+  background:#fff;
+  color:#111;
+  border-radius:6px;
+  cursor:pointer;
+  transition:background-color .2s, border-color .2s;
+}
+.search-clear-btn:hover{
+  background:#f3f4f6;
+  border-color:#c7cdd4;
+}
+
+/* ===== Pagination (numbered) ===== */
+.pagination{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  margin-top:20px;
+  flex-wrap:wrap;
+}
+
+.pagination .range-text{
+  font-size:.9rem;
+  color:#6b7280;
+  margin-right:4px;
+}
+
+.pagination .icon-btn,
+.pagination .page-btn{
+  min-width:38px;
+  height:38px;
+  padding:0 10px;
+  border:1px solid #d1d5db;
+  background:#fff;
+  color:#111;
+  border-radius:8px;
+  cursor:pointer;
+  transition:background-color .2s, border-color .2s, color .2s;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  line-height:1;
+}
+.pagination .page-btn:hover,
+.pagination .icon-btn:hover{ background:#f3f4f6; }
+
+.pagination .page-btn.is-current{
+  background:#111;
+  color:#fff;
+  border-color:#111;
+}
+
+.pagination .icon-btn:disabled,
+.pagination .page-btn:disabled{
+  cursor:not-allowed;
+  opacity:.5;
+}
+
+.pagination .ellipsis{
+  padding:0 4px;
+  color:#6b7280;
+  user-select:none;
+}
+
+.pagination .perpage-select{
+  margin-left:6px;
+  height:38px;
+  padding:0 10px;
+  border:1px solid #d1d5db;
+  border-radius:8px;
+  background:#fff;
+  color:#111;
+}
+
+/* focus visible */
+.search-input:focus,
+.search-btn:focus,
+.search-clear-btn:focus,
+.pagination .icon-btn:focus,
+.pagination .page-btn:focus,
+.pagination .perpage-select:focus{
+  outline:2px solid #93c5fd;
+  outline-offset:2px;
+}
+
+/* ≤768px (tablet) */
+@media (max-width:768px){
+  .search-and-filter{ flex-direction:column; align-items:stretch; gap:8px; }
+  .search-input{ width:100%; font-size:.9rem; padding:8px; }
+  .filter-dropdown,.sort-dropdown{ width:100%; font-size:.9rem; padding:8px; }
+
+  .scholarships-table th,
+  .scholarships-table td{ font-size:.8rem; padding:6px; }
+
+  .details-btn{ font-size:.8rem; padding:4px 8px; }
+  .favorite-btn{ font-size:1rem; }
+
+  .pagination button{ font-size:.8rem; padding:6px 10px; }
+
+  .modal-overlay{ padding-top:100px; }
+  .modal-content{ margin:0 8px; padding:12px; }
+  .modal-content h2{ font-size:1rem; }
+  .modal-body{ font-size:.85rem; }
+
+  .wishlist-table th, .wishlist-table td{ font-size:.8rem; padding:6px; }
+}
+
+/* ≤480px (mobile, 작은폰) */
+@media (max-width:480px){
+  .scholarships-container{ padding:4px; }
+
+  .search-and-filter{
+    gap:4px;
+    flex-direction:row;
+    flex-wrap:wrap;
+  }
+
+  .search-input{
+    flex:1 1 100%;
+    font-size:.7rem;
+    padding:5px;
+  }
+
+  .search-btn,
+  .search-clear-btn{
+    flex:1 1 48%;
+    font-size:.7rem;
+    padding:6px;
+  }
+
+  .filter-dropdown,
+  .sort-dropdown{
+    flex:1 1 48%;
+    font-size:.7rem;
+    padding:6px;
+  }
+
+  .scholarships-table{ font-size:.7rem; table-layout:fixed; }
+  .scholarships-table th,
+  .scholarships-table td{
+    padding:3px;
+    max-width:80px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .details-btn{ font-size:.65rem; padding:2px 4px; }
+
+  .pagination button{ padding:3px 5px; font-size:.65rem; min-width:26px; height:26px; }
+
+  .modal-content{ padding:6px; border-radius:6px; }
+  .modal-content h2{ font-size:.85rem; }
+  .modal-body{ font-size:.7rem; }
+
+  .wishlist-wrapper{ min-height:320px; }
+  .wishlist-table-container{ max-height:180px; }
+  .wishlist-table th, .wishlist-table td{ font-size:.7rem; padding:3px; }
+}

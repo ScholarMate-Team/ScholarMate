@@ -1,0 +1,283 @@
+/* slick-carousel은 아래에 import */
+@import "slick-carousel/slick/slick.css";
+@import "slick-carousel/slick/slick-theme.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== 기본 스타일 (기존 유지) ===== */
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover { color: #535bf2; }
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+/* 전역 버튼 기본(유지) */
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover { border-color: #646cff; }
+button:focus,
+button:focus-visible { outline: 4px auto -webkit-focus-ring-color; }
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover { color: #747bff; }
+  button { background-color: #f9f9f9; }
+}
+
+/* ===== 햄버거(쪽지함 왼쪽) 전용 버튼: 전역 button 스타일 리셋 ===== */
+.sidebar-toggle-btn {
+  all: unset;                 /* 전역 button 스타일 싹 리셋 */
+  cursor: pointer;
+  font-size: 20px;
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-toggle-btn:hover { background: #f8fafc; }
+
+/* ===== Drawer (백드롭 + 왼쪽 슬라이드 사이드바) ===== */
+.drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: none;
+}
+.drawer.open { display: block; }
+
+/* 백드롭 */
+.drawer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+}
+
+/* 실제 패널 */
+.drawer-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 280px;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+  display: flex;
+  flex-direction: column;
+}
+.drawer.open .drawer-panel { transform: translateX(0); }
+
+/* 패널 상단(헤더 높이 맞춰 조정 가능: 64~80px 권장) */
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+  padding: 0 16px;
+  border-bottom: 1px solid #eee;
+}
+.drawer-close {
+  all: unset;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+/* 링크 영역: 기존 .nav-btn 영향 안 받도록 별도 정의 */
+.drawer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+}
+.drawer-links a {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #111;
+  text-decoration: none;
+}
+.drawer-links a:hover { background: #f4f6f8; }
+
+/* 구분선 */
+.drawer-sep {
+  border: none;
+  border-top: 1px solid #eee;
+  margin: 8px 0;
+}
+
+/* 하단 액션 버튼 */
+.drawer-actions {
+  margin-top: auto;
+  padding: 12px;
+  display: flex;
+  gap: 8px;
+}
+.drawer-btn {
+  all: unset;
+  cursor: pointer;
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+}
+.drawer-btn.primary {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+/* ===== 헤더 한 줄 유지(마이페이지/로그아웃 줄바꿈 방지) ===== */
+.header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:nowrap;
+  height:auto;
+  min-height:72px;            /* 필요 시 64~80px로 조정 */
+  padding:10px 24px;
+  box-sizing:border-box;
+}
+.header .header-left {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-shrink:0;
+}
+.header .nav {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:24px;
+  flex:1 1 auto;
+  min-width:0;
+}
+.header .nav .nav-btn { white-space:nowrap; }
+.header .header-right {
+  display:flex !important;
+  align-items:center !important;
+  gap:10px !important;
+  flex-shrink:0;
+  white-space:nowrap;
+}
+
+/* ✅ CommunityNotice Swiper 점 네비게이션 위치 */
+.community-swiper .swiper-pagination {
+  position: relative !important;
+  margin-top: 14px;
+  text-align: center;
+}
+
+.community-swiper .swiper-pagination-bullet {
+  width: 8px;
+  height: 8px;
+  background-color: #ccc;
+  opacity: 1;
+  margin: 0 4px !important;
+  border-radius: 50%;
+  transition: background-color 0.3s;
+}
+
+.community-swiper .swiper-pagination-bullet-active {
+  background-color: #2563eb; /* 활성 점 파란색 */
+}
+
+/* ✅ FeatureSection Swiper 점 네비게이션 위치 조정 */
+.feature-swiper .swiper-pagination {
+  position: relative !important; /* 기본 absolute → relative */
+  margin-top: 12px;              /* 카드와 점 사이 여백 */
+  text-align: center;
+}
+
+.feature-swiper .swiper-pagination-bullet {
+  width: 8px;
+  height: 8px;
+  background-color: #ccc;
+  opacity: 1;
+  margin: 0 4px !important;
+  border-radius: 50%;
+  transition: background-color 0.3s;
+}
+
+.feature-swiper .swiper-pagination-bullet-active {
+  background-color: #2563eb; /* 활성 점 파란색 */
+}
+
+/* ✅ CardSection Swiper 점 네비게이션 */
+.card-swiper .swiper-pagination {
+  position: relative !important;
+  margin-top: 14px;
+  text-align: center;
+}
+
+.card-swiper .swiper-pagination-bullet {
+  width: 8px;
+  height: 8px;
+  background-color: #ccc;
+  opacity: 1;
+  margin: 0 4px !important;
+  border-radius: 50%;
+  transition: background-color 0.3s;
+}
+
+.card-swiper .swiper-pagination-bullet-active {
+  background-color: #2563eb; /* 활성 점 파란색 */
+}
+
+
+
+
+
+
+
+

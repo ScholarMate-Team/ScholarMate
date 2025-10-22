@@ -1,0 +1,84 @@
+/* ✅ 커뮤니티 & 공지사항 배치 */
+.info-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    width: 80%;
+    max-width: 1200px;
+}
+
+/* ✅ 공통 카드 스타일 */
+.info-card {
+    background-color: #ffffff;
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease-in-out;
+}
+
+.info-card:hover {
+    transform: translateY(-5px);
+}
+
+/* ✅ 타이틀 & 더보기 버튼 */
+.info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px; /* ✅ 타이틀과 리스트 사이 구분 */
+    border-bottom: 2px solid #ddd; /* ✅ 구분선 추가 */
+}
+
+.info-header h3 {
+    font-size: 1.4rem;
+    font-weight: bold;
+}
+
+.info-header a {
+    text-decoration: none;
+    color: #111;
+    font-size: 0.9rem;
+}
+
+.info-header a:hover {
+    text-decoration: underline;
+}
+
+/* ✅ 리스트 스타일 */
+.info-card ul {
+    list-style: none;
+    padding: 0;
+}
+
+.info-card li {
+    font-size: 1.1rem;
+    color: #333;
+    display: flex;
+    align-items: center;
+    padding: 12px 0; /* ✅ 리스트 사이 여백 증가 */
+    border-bottom: 1px solid #eee; /* ✅ 리스트 사이 구분선 추가 */
+    transition: color 0.3s;
+}
+
+.info-card li:last-child {
+    border-bottom: none; /* ✅ 마지막 리스트 항목에는 구분선 제거 */
+}
+
+.info-card li:hover {
+    color: #007bff;
+}
+
+.icon {
+    margin-right: 8px;
+    color: #111;
+}
+
+/* ✅ 반응형 - 모바일에서 세로 배치 */
+@media (max-width: 768px) {
+    .info-section {
+        grid-template-columns: 1fr;
+        width: 90%;
+    }
+}

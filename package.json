@@ -1,0 +1,48 @@
+{
+  "name": "scholarmate-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "tailwind:init": "npx tailwindcss init"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.0.0",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "@fortawesome/react-fontawesome": "^0.2.2",
+    "@tailwindcss/line-clamp": "^0.4.4",
+    "antd": "^5.27.0",
+    "axios": "^1.7.9",
+    "react": "^18.3.1",
+    "react-calendar": "^5.1.0",
+    "react-dom": "^18.3.1",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.1.5",
+    "react-slick": "^0.30.3",
+    "react-toastify": "^11.0.3",
+    "slick-carousel": "^1.8.1",
+    "swiper": "^10.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@tailwindcss/postcss": "^4.1.6",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.4.0",
+    "autoprefixer": "^10.4.14",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.14.0",
+    "postcss": "^8.5.6",
+    "postcss-nested": "^7.0.2",
+    "postcss-nesting": "^13.0.2",
+    "tailwindcss": "^3.3.3",
+    "vite": "^6.0.5"
+  }
+}
