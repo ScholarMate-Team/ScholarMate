@@ -324,7 +324,7 @@ def get_recommended_scholarships_api(request):
     print(f"DEBUG: [get_recommended_scholarships_api] 호출됨. 사용자: {request.user.username}, ID: {request.user.id}")
 
     try:
-        # 프로필 유효성
+        # 프로필 유효성 검사
         try:
             user_profile = UserScholarship.objects.get(user=request.user)
             full_region = " ".join(filter(None, [user_profile.region, user_profile.district]))
@@ -335,44 +335,21 @@ def get_recommended_scholarships_api(request):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # 추천 결과 가져오기
         rec = recommend(request.user.id)
 
-        # (1) 추천 결과가 product_id들의 리스트/이터러블인 경우
-        try:
-            if rec and all(isinstance(x, (str, int)) for x in rec):
-                qs = Scholarship.objects.filter(product_id__in=rec)
-                data = ScholarshipSerializer(qs, many=True).data
-                for d in data:
-                    # 1차: 직렬화 값/내부키에서 추출
-                    d["url"] = _extract_url(d) or d.get("url") or None
-                    # 2차: 비어있으면 RawScholarship에서 폴백
-                    if not d.get("url"):
-                        d["url"] = _resolve_url_from_product_id(d.get("product_id"))
-                return Response({"scholarships": data}, status=status.HTTP_200_OK)
-        except Exception:
-            # 형태 판별 실패 시 아래 일반 경로로 진행
-            pass
-
-        # (2) 모델/딕셔너리 혼합 목록
         out = []
         for row in (rec or []):
-            # 직렬화
-            if hasattr(row, "_meta"):  # Django 모델
-                try:
-                    d = ScholarshipSerializer(row).data if isinstance(row, Scholarship) else model_to_dict(row)
-                except Exception:
-                    d = model_to_dict(row)
-            elif isinstance(row, dict):
-                d = dict(row)
-            else:
-                d = {"name": str(row)}
+            if isinstance(row, dict):
+                product_id = row.get("product_id")
+                reason = row.get("reason", "")
+                scholarship = Scholarship.objects.filter(product_id=product_id).first()
 
-            # URL 주입: 추출 → 폴백(RawScholarship) → 기존값
-            d["url"] = _extract_url(row) or _extract_url(d) or d.get("url") or None
-            if not d.get("url"):
-                d["url"] = _resolve_url_from_product_id(d.get("product_id"))
-
-            out.append(d)
+                if scholarship:
+                    d = ScholarshipSerializer(scholarship).data
+                    d["reason"] = reason  # ✅ 추천 이유 추가
+                    d["url"] = _extract_url(d) or d.get("url") or _resolve_url_from_product_id(product_id)
+                    out.append(d)
 
         print(f"DEBUG: 추천 장학금 개수: {len(out)}")
         return Response({"scholarships": out}, status=status.HTTP_200_OK)
@@ -384,4 +361,5 @@ def get_recommended_scholarships_api(request):
             {"error": f"장학금 추천 중 오류가 발생했습니다. 다시 시도해 주세요. ({e})"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
 

@@ -185,8 +185,7 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
     {json.dumps(sampled_scholarships_for_gpt, ensure_ascii=False, indent=2)}
 
     [업무 지시]
-    사용자 프로필과 장학금 목록을 분석하여, 가장 적합한 **상위 5개의 장학금**을 적합도 순으로 정렬하여 JSON 배열로 반환하세요.
-
+    사용자 프로필과 장학금 목록을 분석하여, 목록 내에 있는 **총 {actual_sample_size}개의 장학금**을 적합도 순으로 정렬하여 JSON 배열로 반환하세요.
     **[매우 중요한 규칙]**
     1.  **사실 기반 작성:** reason'을 작성할 때는 아래 규칙을 반드시 따르고, **규칙에 해당하는 내용만을 근거로** 사실에 기반하여 작성하세요. 절대 추측하거나 없는 내용을 지어내지 마세요.
         규칙1.  **지역 조건:** 사용자의 지역('{user_info_dict.get("region")}')과 장학금의 'region'이 구체적으로 일치할수록 높은 점수를 주세요. '전국'은 그 다음입니다.
@@ -246,14 +245,14 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
 
     if not valid_recommendations:
         print("경고: 검증을 통과한 추천 항목이 없습니다. 점수 기반 폴백 로직을 실행합니다.")
-        return scored_queryset[:min(scored_queryset.count(), 5)]
+        return scored_queryset[:min(scored_queryset.count(), 30)]
     
     # --- 4. 최종 결과 생성 ---
-    top_5_ids = [item['product_id'] for item in valid_recommendations[:5]]
+    top_30_ids = [item['product_id'] for item in valid_recommendations[:30]]
     
-    preserved_order = Case(*[When(product_id=pid, then=Value(i)) for i, pid in enumerate(top_5_ids)], default=Value(len(top_5_ids)))    
+    preserved_order = Case(*[When(product_id=pid, then=Value(i)) for i, pid in enumerate(top_30_ids)], default=Value(len(top_30_ids)))    
     final_queryset = filtered_scholarships_queryset.filter(
-        product_id__in=top_5_ids
+        product_id__in=top_30_ids
     ).annotate(
         relevance_score=score_annotation
     ).order_by(preserved_order, '-relevance_score')
@@ -278,5 +277,11 @@ def recommend(user_id: int) -> QuerySet:
     scholarships = filter_by_region_preprocessed(scholarships, user_profile) # 3. 지역 자격 필터링
     final_recommendations = recommend_final_scholarships_by_gpt(scholarships, user_profile) # 4. 최종 랭킹
     
-    print(f"DEBUG: [전체 프로세스 완료] 최종 추천 장학금 수: {final_recommendations.count()}")
-    return final_recommendations
+    print(f"DEBUG: [전체 프로세스 완료] 최종 추천 장학금 수: {len(final_recommendations)}")
+    return [
+        {
+            "product_id": r["scholarship"].product_id,
+            "reason": r["reason"],
+        }
+        for r in final_recommendations
+    ]

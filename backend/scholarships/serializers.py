@@ -68,6 +68,7 @@ class ScholarshipSerializer(serializers.ModelSerializer):
             "region",
             "is_region_processed",
             "url",  # ← 표준화된 단일 url
+            "reason"
         ]
 
     def get_url(self, obj: Scholarship) -> str | None:
@@ -114,6 +115,7 @@ class RawScholarshipSerializer(serializers.ModelSerializer):
             "support_details",
             "recommendation_required",
             "url",
+            "reason"
         ]
 
     def get_url(self, obj: RawScholarship) -> str | None:
