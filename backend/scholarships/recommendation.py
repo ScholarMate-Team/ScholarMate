@@ -279,9 +279,9 @@ def recommend(user_id: int) -> QuerySet:
     
     print(f"DEBUG: [전체 프로세스 완료] 최종 추천 장학금 수: {len(final_recommendations)}")
     return [
-        {
-            "product_id": r["scholarship"].product_id,
-            "reason": r["reason"],
-        }
-        for r in final_recommendations
-    ]
+    {
+        "product_id": r.scholarship.product_id,  # . 연산자로 접근
+        "reason": r.reason,
+    }
+    for r in final_recommendations
+]
