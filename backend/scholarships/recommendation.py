@@ -17,7 +17,7 @@ openai.api_key = settings.OPENAI_API_KEY
 # (GPT 상호작용 헬퍼 함수들은 변경 없음)
 def call_gpt(prompt: str) -> str:
     """OpenAI GPT 모델을 호출하고 응답 텍스트를 반환합니다."""
-    # ... (기존 코드 유지)
+
     try:
         response = openai.ChatCompletion.create(
             model="gpt-4o",
@@ -25,7 +25,8 @@ def call_gpt(prompt: str) -> str:
                 {"role": "system", "content": "당신은 장학금 추천 시스템입니다. 사용자의 요청에 따라 정확한 JSON 형식으로만 응답해야 합니다."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.1
+            temperature=0.1, 
+            request_timeout=30
         )
         gpt_response_content = response['choices'][0]['message']['content']
         print("DEBUG: [GPT 응답 원본]")
@@ -163,7 +164,7 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
         relevance_score=score_annotation
     ).order_by('-relevance_score')
 
-    sample_size = 30
+    sample_size = 20
     actual_sample_size = min(scored_queryset.count(), sample_size)
     sampled_queryset_for_gpt = scored_queryset[:actual_sample_size]
     
