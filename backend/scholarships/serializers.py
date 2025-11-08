@@ -40,6 +40,7 @@ def _pick_url_from_model(obj) -> str | None:
 class ScholarshipSerializer(serializers.ModelSerializer):
     # 항상 정규화된 url 단일 필드로 노출
     url = serializers.SerializerMethodField()
+    reason = serializers.SerializerMethodField()
 
     class Meta:
         model = Scholarship
@@ -84,11 +85,19 @@ class ScholarshipSerializer(serializers.ModelSerializer):
                 if n:
                     return n
         return None
+    
+    def get_reason(self, obj: Scholarship) -> str:
+        """
+        context에서 GPT 추천 결과를 가져와 product_id 기준으로 reason 반환
+        """
+        gpt_results = self.context.get("gpt_results", {})
+        return gpt_results.get(obj.product_id, "")
 
 
 class RawScholarshipSerializer(serializers.ModelSerializer):
     # 목록 API 일관성을 위해 여기서도 정규화된 url 하나만 노출
     url = serializers.SerializerMethodField()
+    reason = serializers.SerializerMethodField()  # GPT 추천 사유
 
     class Meta:
         model = RawScholarship
@@ -120,6 +129,10 @@ class RawScholarshipSerializer(serializers.ModelSerializer):
 
     def get_url(self, obj: RawScholarship) -> str | None:
         return _pick_url_from_model(obj)
+    
+    def get_reason(self, obj: RawScholarship) -> str:
+        gpt_results = self.context.get("gpt_results", {})
+        return gpt_results.get(obj.product_id, "")    
 
 
 class WishlistSerializer(serializers.ModelSerializer):

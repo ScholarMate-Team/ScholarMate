@@ -324,7 +324,7 @@ def get_recommended_scholarships_api(request):
     print(f"DEBUG: [get_recommended_scholarships_api] 호출됨. 사용자: {request.user.username}, ID: {request.user.id}")
 
     try:
-        # 프로필 유효성 검사
+        # 1️⃣ 사용자 프로필 확인
         try:
             user_profile = UserScholarship.objects.get(user=request.user)
             full_region = " ".join(filter(None, [user_profile.region, user_profile.district]))
@@ -335,21 +335,30 @@ def get_recommended_scholarships_api(request):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # 추천 결과 가져오기
-        rec = recommend(request.user.id)
+        # 2️⃣ GPT 추천 결과 가져오기
+        rec = recommend(request.user.id)  # rec: [{'product_id': ..., 'reason': ...}, ...]
+        if not rec:
+            return Response({"scholarships": []}, status=status.HTTP_200_OK)
 
+        # 3️⃣ GPT 결과를 dict로 변환 (product_id -> reason)
+        gpt_results_dict = {row.get("product_id"): row.get("reason", "") for row in rec}
+
+        # 4️⃣ 추천 장학금 queryset
+        scholarships_queryset = Scholarship.objects.filter(product_id__in=gpt_results_dict.keys())
+
+        # 5️⃣ Serializer 호출 (context에 GPT reason 전달)
+        serializer = ScholarshipSerializer(
+            scholarships_queryset,
+            many=True,
+            context={"gpt_results": gpt_results_dict}
+        )
+
+        # 6️⃣ url도 보정 후 반환
         out = []
-        for row in (rec or []):
-            if isinstance(row, dict):
-                product_id = row.get("product_id")
-                reason = row.get("reason", "")
-                scholarship = Scholarship.objects.filter(product_id=product_id).first()
-
-                if scholarship:
-                    d = ScholarshipSerializer(scholarship).data
-                    d["reason"] = reason  # ✅ 추천 이유 추가
-                    d["url"] = _extract_url(d) or d.get("url") or _resolve_url_from_product_id(product_id)
-                    out.append(d)
+        for data in serializer.data:
+            product_id = data.get("product_id")
+            data["url"] = _extract_url(data) or data.get("url") or _resolve_url_from_product_id(product_id)
+            out.append(data)
 
         print(f"DEBUG: 추천 장학금 개수: {len(out)}")
         return Response({"scholarships": out}, status=status.HTTP_200_OK)
@@ -361,5 +370,3 @@ def get_recommended_scholarships_api(request):
             {"error": f"장학금 추천 중 오류가 발생했습니다. 다시 시도해 주세요. ({e})"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-
-
