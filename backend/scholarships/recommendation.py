@@ -135,7 +135,6 @@ def filter_by_region_preprocessed(scholarships_queryset: QuerySet, user_profile:
 
 # --- 2단계: GPT 최종 랭킹 함수 --- 
 
-# 🚨 함수 반환 타입을 List[Dict]로 명확히 변경합니다.
 def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet, user_profile: UserScholarship) -> List[Dict]:
     """
     GPT에게 최종 추천 이유까지 작성하도록 위임하고, 결과를 Scholarship 객체와 Reason을 포함한
@@ -164,6 +163,7 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
         relevance_score=score_annotation
     ).order_by('-relevance_score')
 
+    # 🚨 수정됨: 샘플 크기를 20으로 변경
     sample_size = 20
     actual_sample_size = min(scored_queryset.count(), sample_size)
     sampled_queryset_for_gpt = scored_queryset[:actual_sample_size]
@@ -176,7 +176,6 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
     user_info_dict['region'] = full_user_region
     user_info_dict.pop('district', None)
     
-    # 🚨 프롬프트의 '상위 30개' 문구를 '총 {actual_sample_size}개의 장학금'으로 변경하여 논리적 일관성 확보
     prompt = f"""
     당신은 사용자의 프로필과 장학금 자격 조건을 비교하여, 개인화된 추천 메시지를 작성하는 AI 카피라이터입니다.
     
@@ -196,14 +195,12 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
     parsed_response = safe_parse_json(gpt_response_content)
 
     if not isinstance(parsed_response, list) or not parsed_response:
-        # 폴백 시에는 점수 높은 순으로 반환 (Scholarship 객체 리스트 반환)
-        # 🚨 폴백 시에도 뷰에서 처리할 수 있도록 딕셔너리 리스트로 변경
-        fallback_qs = scored_queryset[:min(scored_queryset.count(), 30)]
+        # 🚨 수정됨: 폴백 시 최대 20개 반환
+        fallback_qs = scored_queryset[:min(scored_queryset.count(), 20)]
         return [
             {"product_id": s.product_id, "reason": "GPT 분석 실패로 인한 기본 추천", "scholarship": s}
             for s in fallback_qs
         ]
-
 
     # GPT가 반환한 ID가 유효한지(샘플링 후보군에 있는지) 최소한의 검증만 수행
     valid_recommendations = []
@@ -213,7 +210,6 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
     for item in parsed_response:
         product_id = item.get('product_id')
         if isinstance(item, dict) and product_id and product_id in sampled_ids_map:
-            # 🚨 유효한 항목에 Scholarship 객체를 추가하여 저장
             item['scholarship'] = sampled_ids_map[product_id]
             valid_recommendations.append(item)
             print(f"  - ✅ 검증 성공 (ID 유효): {product_id}, 이유: {item.get('reason')}")
@@ -223,31 +219,24 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
 
     if not valid_recommendations:
         print("경고: 검증을 통과한 추천 항목이 없습니다. 점수 기반 폴백 로직을 실행합니다.")
-        # 폴백 로직에서도 딕셔너리 리스트 반환
-        fallback_qs = scored_queryset[:min(scored_queryset.count(), 30)]
+        # 🚨 수정됨: 폴백 시 최대 20개 반환
+        fallback_qs = scored_queryset[:min(scored_queryset.count(), 20)]
         return [
             {"product_id": s.product_id, "reason": "GPT 분석 실패로 인한 기본 추천", "scholarship": s}
             for s in fallback_qs
         ]
 
     # --- 4. 최종 결과 생성 ---
-    # valid_recommendations는 이미 GPT의 순서대로 정렬되어 있으므로, 그대로 반환합니다.
-    final_results = valid_recommendations[:30] # 상위 30개 (혹은 실제 검증된 개수)
-
-    # 🚨 필요하다면 여기에서 최종 쿼리셋을 필터링하는 대신,
-    # valid_recommendations에서 필요한 정보(ID, reason)와 Scholarship 객체를 추출하여 반환
-    # (이미 valid_recommendations에 객체가 담겨 있으므로 추가 DB 쿼리 불필요)
+    # 🚨 수정됨: 최종 결과도 20개로 제한
+    final_results = valid_recommendations[:20] 
     
     print(f"DEBUG: [4. GPT 최종 추천] 최종 반환될 장학금 수: {len(final_results)}")
-    # 🚨 딕셔너리 리스트 반환: [{'product_id': '...', 'reason': '...', 'scholarship': <obj>}, ...]
     return final_results
 
 
-# --- 총괄 지휘 함수 ---
-# 🚨 함수 반환 타입을 List[Dict]로 변경합니다.
+# --- 총괄 지휘 함수 --- (추천 로직은 변경 없음)
 def recommend(user_id: int) -> List[Dict]:
-    """주어진 사용자 ID에 대해 장학금을 추천하는 전체 프로세스를 실행합니다."""
-    print(f"DEBUG: [전체 프로세스 시작] 사용자 ID: {user_id}")
+    # ... (기존 코드 유지)
     try:
         user_profile = UserScholarship.objects.get(user_id=user_id)
     except UserScholarship.DoesNotExist:
@@ -255,21 +244,18 @@ def recommend(user_id: int) -> List[Dict]:
         return []
 
     scholarships = Scholarship.objects.all()
-    # scholarships = filter_scholarships_by_date(scholarships) # 1. 날짜 필터링 (필요시 활성화)
-    scholarships = filter_basic(scholarships, user_profile) # 2. 기본 자격 필터링
-    scholarships = filter_by_region_preprocessed(scholarships, user_profile) # 3. 지역 자격 필터링
+    # scholarships = filter_scholarships_by_date(scholarships)
+    scholarships = filter_basic(scholarships, user_profile)
+    scholarships = filter_by_region_preprocessed(scholarships, user_profile)
     
-    # 🚨 recommend_final_scholarships_by_gpt는 이제 딕셔너리 리스트를 반환합니다.
-    final_recommendations = recommend_final_scholarships_by_gpt(scholarships, user_profile) # 4. 최종 랭킹
+    final_recommendations = recommend_final_scholarships_by_gpt(scholarships, user_profile)
     
     print(f"DEBUG: [전체 프로세스 완료] 최종 추천 장학금 수: {len(final_recommendations)}")
     
-    # 🚨 반환 구조 수정: 'r'이 딕셔너리이므로 딕셔너리 키로 접근합니다.
-    # 뷰에서 필요한 최소한의 정보(product_id, reason)만 반환합니다.
     return [
         {
-            "product_id": r['product_id'],  # 딕셔너리 키로 접근
-            "reason": r['reason'],          # 딕셔너리 키로 접근
+            "product_id": r['product_id'],
+            "reason": r['reason'],
         }
         for r in final_recommendations
     ]
