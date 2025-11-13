@@ -20,17 +20,10 @@ def call_gpt(prompt: str) -> str:
         response = openai.ChatCompletion.create(
             model="gpt-4o",
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "당신은 장학금 추천 사유를 작성하는 AI 전문가입니다. "
-                        "항상 구체적이고 문단형으로, 최소 2문장 이상으로 작성하세요."
-                    ),
-                },
-                {"role": "user", "content": prompt},
+                {"role": "system", "content": "당신은 장학금 추천 시스템입니다. 사용자의 요청에 따라 정확한 JSON 형식으로만 응답해야 합니다."},
+                {"role": "user", "content": prompt}
             ],
-            temperature=0.4,       # 기존 0.1 → 0.4 로 완화
-            request_timeout=60,    # 기존 기본값(15초) → 60초로 확장
+            temperature=0.1
         )
         gpt_response_content = response['choices'][0]['message']['content']
         print("DEBUG: [GPT 응답 원본]")
@@ -168,7 +161,7 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
         relevance_score=score_annotation
     ).order_by('-relevance_score')
 
-    sample_size = 15
+    sample_size = 20
     actual_sample_size = min(scored_queryset.count(), sample_size)
     sampled_queryset_for_gpt = scored_queryset[:actual_sample_size]
     
@@ -180,7 +173,7 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
     user_info_dict['region'] = full_user_region
     user_info_dict.pop('district', None)
     
-    # 🚨 프롬프트의 '상위 15개' 문구를 '총 {actual_sample_size}개의 장학금'으로 변경하여 논리적 일관성 확보
+    # 🚨 프롬프트의 '상위 20개' 문구를 '총 {actual_sample_size}개의 장학금'으로 변경하여 논리적 일관성 확보
     prompt = f"""
     당신은 사용자의 프로필과 장학금 자격 조건을 비교하여, 개인화된 추천 메시지를 작성하는 AI 카피라이터입니다.
     
@@ -207,14 +200,25 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
             - 만약 사용자의 'is_national_merit'가 True이고, 장학금의'income_criteria_details'에 '국가유공자' 또는 '보훈'이라는 텍스트가 있으면 높은 가산점을 주세요.
         규칙5.  **기타 조건:** 위 조건 외에도 사용자의 전공, 학년 등이 장학금의 조건과 일치하는지 종합적으로 고려하세요.
 
-    2.  **구체적인 이유 제시:** 'reason'에는 왜 이 장학금이 사용자에게 적합한지, 어떤 조건(지역, 성적, 소득, 전공, 학년, 특정 자격 등)이 어떻게 부합하는지를 **2문장 이상 자연스러운 문단 형태로** 작성하세요.
-    + 예를 들어, “귀하는 경기 지역의 4학년생으로, 해당 장학금의 지역 요건과 학년 조건을 모두 충족합니다. 또한 성적 기준(3.5 이상)을 만족하며, 전국 단위로 지원 가능해 접근성이 높습니다.” 와 같은 형태로 작성하세요.
-    
+    2.  **구체적인 이유 제시:** 'reason'에는 왜 이 장학금이 사용자에게 적합한지, 어떤 조건(예: 지역, 성적, 소득, 특정 자격)이 어떻게 부합하는지 **구체적으로** 서술하세요.
+
     **[출력 형식]**
     - 각 항목은 'product_id'와 'reason' 두 개의 키를 가진 JSON 객체여야 합니다.
     - 'reason'은 사용자에게 보여줄 최종 추천 사유(한국어 문자열)입니다. 만약 규칙4로 인해 가산점을 얻은 경우, 'reason'에 그와 관련된 내용을 반드시 서술하세요.
     - 'product_id'는 절대 변경하지 마세요.
 
+    **[출력 예시]**
+    [
+      {{
+        "product_id": "장학금B_지자체B",
+        "reason": "거주하시는 '경기도 파주시' 지역 조건에 부합하며, 직전 학기 성적(4.1)이 요구 기준(3.5 이상)을 충족합니다."
+      }},
+
+      {{
+        "product_id": "장학금A_재단A",
+        "reason": "'다자녀 가정' 자격에 해당하며, '전국' 단위로 지원 가능하여 지역 제한이 없습니다."
+      }}
+    ]
     """
 
    # --- 3. GPT 호출 및 결과 처리 ---
@@ -224,7 +228,7 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
     if not isinstance(parsed_response, list) or not parsed_response:
         # 폴백 시에는 점수 높은 순으로 반환 (Scholarship 객체 리스트 반환)
         # 🚨 폴백 시에도 뷰에서 처리할 수 있도록 딕셔너리 리스트로 변경
-        fallback_qs = scored_queryset[:min(scored_queryset.count(), 15)]
+        fallback_qs = scored_queryset[:min(scored_queryset.count(), 20)]
         return [
             {"product_id": s.product_id, "reason": "GPT 분석 실패로 인한 기본 추천", "scholarship": s}
             for s in fallback_qs
@@ -250,7 +254,7 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
     if not valid_recommendations:
         print("경고: 검증을 통과한 추천 항목이 없습니다. 점수 기반 폴백 로직을 실행합니다.")
         # 폴백 로직에서도 딕셔너리 리스트 반환
-        fallback_qs = scored_queryset[:min(scored_queryset.count(), 15)]
+        fallback_qs = scored_queryset[:min(scored_queryset.count(), 20)]
         return [
             {"product_id": s.product_id, "reason": "GPT 분석 실패로 인한 기본 추천", "scholarship": s}
             for s in fallback_qs
@@ -258,7 +262,7 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
 
     # --- 4. 최종 결과 생성 ---
     # valid_recommendations는 이미 GPT의 순서대로 정렬되어 있으므로, 그대로 반환합니다.
-    final_results = valid_recommendations[:15] # 상위 15개 (혹은 실제 검증된 개수)
+    final_results = valid_recommendations[:20] # 상위 20개 (혹은 실제 검증된 개수)
 
     # 🚨 필요하다면 여기에서 최종 쿼리셋을 필터링하는 대신,
     # valid_recommendations에서 필요한 정보(ID, reason)와 Scholarship 객체를 추출하여 반환
