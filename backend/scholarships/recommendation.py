@@ -24,7 +24,7 @@ def call_gpt(prompt: str) -> str:
                     "role": "system",
                     "content": (
                         "당신은 장학금 추천 사유를 작성하는 AI 전문가입니다. "
-                        "항상 구체적이고 문단형으로, 최소 3문장 이상으로 작성하세요."
+                        "항상 구체적이고 문단형으로, 최소 2문장 이상으로 작성하세요."
                     ),
                 },
                 {"role": "user", "content": prompt},
@@ -215,18 +215,6 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
     - 'reason'은 사용자에게 보여줄 최종 추천 사유(한국어 문자열)입니다. 만약 규칙4로 인해 가산점을 얻은 경우, 'reason'에 그와 관련된 내용을 반드시 서술하세요.
     - 'product_id'는 절대 변경하지 마세요.
 
-    **[출력 예시]**
-    [
-      {{
-        "product_id": "장학금B_지자체B",
-        "reason": "거주하시는 '경기도 파주시' 지역 조건에 부합하며, 직전 학기 성적(4.1)이 요구 기준(3.5 이상)을 충족합니다."
-      }},
-
-      {{
-        "product_id": "장학금A_재단A",
-        "reason": "'다자녀 가정' 자격에 해당하며, '전국' 단위로 지원 가능하여 지역 제한이 없습니다."
-      }}
-    ]
     """
 
    # --- 3. GPT 호출 및 결과 처리 ---
