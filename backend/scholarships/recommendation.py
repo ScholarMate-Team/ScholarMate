@@ -274,6 +274,9 @@ def recommend(user_id: int) -> List[Dict]:
     print(f"DEBUG: [전체 프로세스 완료] 최종 추천 장학금 수: {len(final_recommendations)}")
 
     return [
-        {"product_id": r["product_id"], "reason": r["reason"]}
+        {
+            "product_id": r['product_id'],  # 딕셔너리 키로 접근
+            "reason": r['reason'],          # 딕셔너리 키로 접근
+        }
         for r in final_recommendations
     ]
