@@ -172,8 +172,41 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
 {json.dumps(sampled_scholarships_for_gpt, ensure_ascii=False, indent=2)}
 
 [업무 지시]
-(기존 프롬프트 동일)
-"""
+사용자 프로필과 장학금 목록을 분석하여, 목록 내에 있는 **총 {actual_sample_size}개의 장학금**을 적합도 순으로 정렬하여 JSON 배열로 반환하세요.
+
+    **[매우 중요한 규칙]**
+
+    1.  **사실 기반 작성:** reason'을 작성할 때는 아래 규칙을 반드시 따르고, **규칙에 해당하는 내용만을 근거로** 사실에 기반하여 작성하세요. 절대 추측하거나 없는 내용을 지어내지 마세요.
+        규칙1.  **지역 조건:** 사용자의 지역('{user_info_dict.get("region")}')과 장학금의 'region'이 구체적으로 일치할수록 높은 점수를 주세요. '전국'은 그 다음입니다.
+        규칙2.  **성적 조건:** 사용자의 성적(gpa_last_semester, gpa_overall)과 장학금의 'grade_criteria_details'를 비교하여, 기준을 충족하면 점수를 부여하세요.
+        규칙3.  **소득 조건:** 사용자의 소득분위('income_level')와 장학금의 'income_criteria_details'를 비교하여, 기준에 부합하면 점수를 부여하세요.
+        규칙4.  **특정 자격 조건 (가산점 항목):**
+            - 만약 사용자의 'is_multi_cultural_family'가 True이고, 장학금 설명(주로 'specific_qualification_details')에 '다문화'라는 텍스트가 있으면 높은 가산점을 주세요.
+            - 만약 사용자의 'is_single_parent_family'가 True이고, 장학금의 'income_criteria_details'에 '한부모', '가정형편', '경제사정'라는 텍스트가 있으면 높은 가산점을 주세요.
+            - 만약 사용자의 'is_multiple_children_family'가 True이고, 장학금의'income_criteria_details'에 '다자녀'라는 텍스트가 있으면 높은 가산점을 주세요.
+            - 만약 사용자의 'is_national_merit'가 True이고, 장학금의'income_criteria_details'에 '국가유공자' 또는 '보훈'이라는 텍스트가 있으면 높은 가산점을 주세요.
+        규칙5.  **기타 조건:** 위 조건 외에도 사용자의 전공, 학년 등이 장학금의 조건과 일치하는지 종합적으로 고려하세요.
+
+    2.  **구체적인 이유 제시:** 'reason'에는 왜 이 장학금이 사용자에게 적합한지, 어떤 조건(지역, 성적, 소득, 전공, 학년, 특정 자격 등)이 어떻게 부합하는지를 **3문장 이상 자연스러운 문단 형태로** 작성하세요. 예를 들어, “귀하는 경기 지역의 4학년생으로, 해당 장학금의 지역 요건과 학년 조건을 모두 충족합니다. 또한 성적 기준(3.5 이상)을 만족하며, 전국 단위로 지원 가능해 접근성이 높습니다.” 와 같은 형태로 작성하세요
+
+    **[출력 형식]**
+    - 각 항목은 'product_id'와 'reason' 두 개의 키를 가진 JSON 객체여야 합니다.
+    - 'reason'은 사용자에게 보여줄 최종 추천 사유(한국어 문자열)입니다. 만약 규칙4로 인해 가산점을 얻은 경우, 'reason'에 그와 관련된 내용을 반드시 서술하세요.
+    - 'product_id'는 절대 변경하지 마세요.
+
+    **[출력 예시]**
+    [
+      {{
+        "product_id": "장학금B_지자체B",
+        "reason": "거주하시는 '경기도 파주시' 지역 조건에 부합하며, 직전 학기 성적(4.1)이 요구 기준(3.5 이상)을 충족합니다."
+      }},
+
+      {{
+        "product_id": "장학금A_재단A",
+        "reason": "'다자녀 가정' 자격에 해당하며, '전국' 단위로 지원 가능하여 지역 제한이 없습니다."
+      }}
+    ]
+    """
 
     # --- 3단계: GPT 호출 ---
     gpt_response_content = call_gpt(prompt)
