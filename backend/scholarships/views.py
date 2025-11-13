@@ -336,7 +336,7 @@ def get_recommended_scholarships_api(request):
             )
 
         # 2️⃣ GPT 추천 결과 가져오기
-        rec = recommend(request.user.id)  # rec: [{'product_id': ..., 'reason': ...}, ...]
+        rec = recommend(request.user.id)
         if not rec:
             return Response({"scholarships": []}, status=status.HTTP_200_OK)
 
@@ -353,7 +353,7 @@ def get_recommended_scholarships_api(request):
             context={"gpt_results": gpt_results_dict}
         )
 
-        # 6️⃣ url도 보정 후 반환
+        # 6️⃣ url 보정 후 반환
         out = []
         for data in serializer.data:
             product_id = data.get("product_id")
