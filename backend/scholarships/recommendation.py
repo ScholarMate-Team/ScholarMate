@@ -14,36 +14,62 @@ openai.api_key = settings.OPENAI_API_KEY
 
 # (GPT 상호작용 헬퍼 함수들은 변경 없음)
 def call_gpt(prompt: str) -> str:
-    """OpenAI GPT 모델을 호출하고 응답 텍스트를 반환합니다."""
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4o",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "당신은 장학금 추천 사유를 작성하는 AI 전문가입니다. "
-                        "항상 구체적이고 문단형으로, 최소 3문장 이상으로 작성하세요."
-                    ),
-                },
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.4,  # 기존 0.1 → 0.4 완화
-            request_timeout=60,  # 기존 15초 → 60초로 확장
-        )
-        gpt_response_content = response["choices"][0]["message"]["content"]
-        print("DEBUG: [GPT 응답 원본]")
-        print(gpt_response_content)
-        return gpt_response_content
+    """OpenAI GPT 모델을 호출하고 응답 텍스트를 반환합니다.
+    SDK 버전 차이로 인해 request_timeout 키워드가 지원되지 않는 경우가 있어,
+    안전하게 여러 방식으로 시도하도록 구현합니다.
+    """
+    try_variants = [
+        {"kw": {"temperature": 0.4, "request_timeout": 60}, "label": "request_timeout"},
+        {"kw": {"temperature": 0.4, "timeout": 60}, "label": "timeout"},
+        {"kw": {"temperature": 0.4}, "label": "no_timeout"},
+    ]
 
-    except openai.error.OpenAIError as e:
-        print(f"DEBUG: 오류: OpenAI API 호출 실패: {e}")
-        return ""
+    last_exc = None
+    for variant in try_variants:
+        try:
+            print(f"DEBUG: call_gpt 시도 (방식={variant['label']})")
+            response = openai.ChatCompletion.create(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "당신은 장학금 추천 사유를 작성하는 AI 전문가입니다. "
+                            "항상 구체적이고 문단형으로, 최소 3문장 이상으로 작성하세요. "
+                            "응답은 가능한 한 JSON 배열 형식으로만 출력하세요."
+                        ),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                **variant["kw"]
+            )
+            # 정상적으로 응답을 받으면 바로 반환
+            gpt_response_content = response["choices"][0]["message"]["content"]
+            print("DEBUG: [GPT 응답 원본]")
+            print(gpt_response_content)
+            return gpt_response_content
 
-    except Exception as e:
-        print(f"DEBUG: 오류: GPT 호출 중 알 수 없는 오류 발생: {e}")
-        return ""
+        except TypeError as e:
+            # 주로 함수 호출 시 지원하지 않는 키워드 인자 때문에 발생
+            print(f"DEBUG: TypeError with variant={variant['label']}: {e}")
+            last_exc = e
+            continue
+        except openai.error.OpenAIError as e:
+            # OpenAI 관련 예외(Timeout, RateLimit, Auth 등)
+            print(f"DEBUG: OpenAIError with variant={variant['label']}: {e}")
+            last_exc = e
+            # 간단한 백오프(운영 환경에서는 더 정교한 재시도 필요)
+            import time
+            time.sleep(1)
+            continue
+        except Exception as e:
+            print(f"DEBUG: 알 수 없는 오류 with variant={variant['label']}: {e}")
+            last_exc = e
+            continue
 
+    # 모든 시도 실패 시 예외 로그와 함께 빈 문자열 반환 (기존 로직 호환)
+    print("DEBUG: call_gpt 모든 시도 실패. 마지막 예외:", last_exc)
+    return ""
 
 # --- ✅ GPT 응답 파싱 함수 ---
 def extract_json_from_gpt_response(gpt_response_content: str) -> str:
