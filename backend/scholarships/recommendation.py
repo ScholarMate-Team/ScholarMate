@@ -1,6 +1,9 @@
 import openai
+import time
 import json
 import re
+import requests
+import urllib3
 from datetime import datetime
 from django.db.models import QuerySet, Q, Case, When, Value
 from django.conf import settings
@@ -13,35 +16,59 @@ from typing import List, Dict # 타입 힌트 추가
 openai.api_key = settings.OPENAI_API_KEY
 
 # (GPT 상호작용 헬퍼 함수들은 변경 없음)
-def call_gpt(prompt: str) -> str:
-    """OpenAI GPT 모델을 호출하고 응답 텍스트를 반환합니다."""
-    # ... (기존 코드 유지)
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4o",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "당신은 장학금 추천 사유를 작성하는 AI 전문가입니다. "
-                        "항상 구체적이고 문단형으로, 최소 2문장 이상으로 작성하세요."
-                    ),
-                },
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.4,       # 기존 0.1 → 0.4 로 완화
-            request_timeout=60,    # 기존 기본값(15초) → 60초로 확장
-        )
-        gpt_response_content = response['choices'][0]['message']['content']
-        print("DEBUG: [GPT 응답 원본]")
-        print(gpt_response_content)
-        return gpt_response_content
-    except openai.error.OpenAIError as e:
-        print(f"DEBUG: 오류: OpenAI API 호출 실패: {e}")
-        return ""
-    except Exception as e:
-        print(f"DEBUG: 오류: GPT 호출 중 알 수 없는 오류 발생: {e}")
-        return ""
+def call_gpt(prompt: str, max_retries: int = 3, delay: int = 2) -> str:
+    """OpenAI GPT 모델을 호출하고 응답 텍스트를 반환하며, 네트워크 오류 시 자동 재시도합니다."""
+
+    for attempt in range(1, max_retries + 1):
+
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "당신은 장학금 추천 사유를 작성하는 AI 전문가입니다. "
+                            "항상 구체적이고 문단형으로, 최소 2문장 이상으로 작성하세요."
+                        ),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.4,
+                request_timeout=60,   # 네트워크 안정성을 위해 60초 유지
+            )
+
+            gpt_response_content = response["choices"][0]["message"]["content"]
+
+            print("DEBUG: [GPT 응답 원본]")
+            print(gpt_response_content)
+
+            return gpt_response_content
+
+        # ---- OpenAI API 오류 (서버 오류, 레이트 리밋 등)
+        except openai.error.OpenAIError as e:
+            print(f"[GPT ERROR] OpenAI API 오류 발생 (시도 {attempt}/{max_retries}): {e}")
+
+        # ---- 네트워크 계층 오류 (너 로그에서 발견된 SSL/TLS 오류 포함)
+        except (requests.exceptions.RequestException,
+                urllib3.exceptions.ProtocolError,
+                urllib3.exceptions.ReadTimeoutError,
+                urllib3.exceptions.NewConnectionError,
+                urllib3.exceptions.MaxRetryError) as e:
+            print(f"[NETWORK ERROR] 네트워크 오류 발생 (시도 {attempt}/{max_retries}): {e}")
+
+        # ---- 그 외 모든 예외 (일반적인 런타임 오류)
+        except Exception as e:
+            print(f"[UNKNOWN ERROR] 알 수 없는 오류 발생 (시도 {attempt}/{max_retries}): {e}")
+
+        # 재시도 필요
+        if attempt < max_retries:
+            print(f"[RETRY] {delay}초 후 재시도합니다…")
+            time.sleep(delay)
+
+    # 모든 재시도 실패 → 500 방지 위해 빈 문자열 반환
+    print("[FAIL] GPT 호출 실패: 모든 재시도 실패, 빈 문자열 반환")
+    return ""
 
 def extract_json_from_gpt_response(gpt_response_content: str) -> str:
     """GPT 응답 텍스트에서 JSON 배열 또는 객체를 찾습니다."""
