@@ -170,6 +170,10 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
     """
     GPT에게 최종 추천 이유까지 작성하도록 위임하고, 결과를 Scholarship 객체와 Reason을 포함한
     딕셔너리 리스트로 반환하여 후속 처리가 용이하도록 합니다.
+
+    특징 : 
+    - '추천되지 않습니다' 문구가 있는 장학금은 최종 추천에서 제외합니다. 
+    - 최대 15개까지 반환하지만, 남은 항목이 15개 미만이면 그대로 반환합니다. 
     """
     print(f"DEBUG: [3. GPT 최종 추천] GPT 호출 전 후보군 수: {filtered_scholarships_queryset.count()}")
     if filtered_scholarships_queryset.count() == 0:
