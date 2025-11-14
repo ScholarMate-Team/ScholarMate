@@ -35,7 +35,7 @@ def call_gpt(prompt: str, max_retries: int = 3, delay: int = 2) -> str:
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.4,
-                request_timeout=60,   # 네트워크 안정성을 위해 60초 유지
+                request_timeout=120,   # 네트워크 안정성을 위해 60초 유지
             )
 
             gpt_response_content = response["choices"][0]["message"]["content"]
@@ -145,7 +145,6 @@ def filter_basic(scholarships_queryset: QuerySet, user_profile: UserScholarship)
     return current_filtered_qs
 
 def filter_by_region_preprocessed(scholarships_queryset: QuerySet, user_profile: UserScholarship) -> QuerySet:
-    # ... (기존 코드 유지)
     user_region_do = getattr(user_profile, 'region', '') or ""
     user_district = getattr(user_profile, 'district', '') or ""
     
@@ -207,7 +206,6 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
     user_info_dict['region'] = full_user_region
     user_info_dict.pop('district', None)
     
-    # 🚨 프롬프트의 '상위 15개' 문구를 '총 {actual_sample_size}개의 장학금'으로 변경하여 논리적 일관성 확보
     prompt = f"""
     당신은 사용자의 프로필과 장학금 자격 조건을 비교하여, 개인화된 추천 메시지를 작성하는 AI 카피라이터입니다.
     
