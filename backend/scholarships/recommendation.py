@@ -105,8 +105,8 @@ def filter_scholarships_by_date(scholarships_queryset: QuerySet) -> QuerySet:
     # ... (기존 코드 유지)
     current_date = datetime.now().date()
     filtered_qs = scholarships_queryset.filter(
-            recruitment_start_date__lte=current_date,
-            recruitment_end_date__gte=current_date
+            recruitment_start__lte=current_date,
+            recruitment_end__gte=current_date
         )
     print(f"DEBUG: [0. 날짜 필터링] 필터링 후 장학금 수: {filtered_qs.count()}")
     return filtered_qs
