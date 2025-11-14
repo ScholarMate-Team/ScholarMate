@@ -88,8 +88,8 @@ class Command(BaseCommand):
                     defaults = {
                         "name": product_name,
                         "foundation_name": org_name,
-                        "recruitment_start": recruitment_start_parsed,
-                        "recruitment_end": recruitment_end_parsed,
+                        "recruitment_start": force_year_2025(recruitment_start_parsed),
+                        "recruitment_end": force_year_2025(recruitment_end_parsed),
                         "university_type": item.get("대학구분", ""),
                         "product_type": item.get("학자금유형구분", ""),
                         "grade_criteria_details": item.get("성적기준 상세내용", ""),
