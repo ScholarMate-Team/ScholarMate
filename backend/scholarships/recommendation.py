@@ -269,13 +269,18 @@ def recommend_final_scholarships_by_gpt(filtered_scholarships_queryset: QuerySet
     print("\n" + "="*25 + " GPT 응답 최소 검증 시작 " + "="*25)
     for item in parsed_response:
         product_id = item.get('product_id')
+        reason = item.get('reason', '')
         if isinstance(item, dict) and product_id and product_id in sampled_ids_map:
-            # 🚨 유효한 항목에 Scholarship 객체를 추가하여 저장
+            # '추천되지 않습니다' 문구가 있는 경우 제외
+            if "추천되지 않습니다" in reason:
+                print(f"  - ❌ 제외됨 (추천 불가): {product_id}, 이유: {reason}")
+                continue
+            # 유효한 항목에 Scholarship 객체 추가
             item['scholarship'] = sampled_ids_map[product_id]
             valid_recommendations.append(item)
-            print(f"  - ✅ 검증 성공 (ID 유효): {product_id}, 이유: {item.get('reason')}")
+            print(f"  - ✅ 검증 성공 (ID 유효): {product_id}, 이유: {reason}")
         else:
-            print(f"  - ❌ 검증 실패 (ID 오류 또는 환각): {product_id}")
+            print(f"  - ❌ 검증 실패 (ID 오류 또는 환각): {product_id}")
     print("="*25 + " GPT 응답 최소 검증 완료 " + "="*25 + "\n")
 
     if not valid_recommendations:
