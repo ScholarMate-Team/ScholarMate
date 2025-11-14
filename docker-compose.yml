@@ -6,14 +6,8 @@ services:
     build: ./backend
     # 컨테이너 시작 시 실행할 명령어입니다. Dockerfile의 CMD를 덮어씁니다.
     # 이렇게 하면 Dockerfile과 실행 명령어를 분리하여 더 유연하게 관리할 수 있습니다.
-    command: gunicorn ScholarMate_backend.wsgi \
-     --bind 0.0.0.0:8000 \
-     --workers=3 \
-     --threads=2 \
-     --worker-class=gthread \
-     --timeout=120 \
-     --graceful-timeout=30 \
-     --log-level=info
+    command: gunicorn ScholarMate_backend.wsgi --bind 0.0.0.0:8000 --workers=2 --threads=1 --worker-class=gthread --timeout=120 --graceful-timeout=30 --log-level=info
+
     # 로컬의 코드가 컨테이너와 동기화되도록 합니다. 개발 환경에 유용합니다.
     volumes:
       - ./backend:/app
