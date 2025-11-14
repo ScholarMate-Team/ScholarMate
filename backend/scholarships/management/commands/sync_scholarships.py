@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand
 from scholarships.models import Scholarship, RawScholarship
 import requests
 from datetime import datetime
+from datetime import date
 from django.conf import settings
 
 API_URL = "https://api.odcloud.kr/api/15028252/v1/uddi:ccd5ddd5-754a-4eb8-90f0-cb9bce54870b"
@@ -33,6 +34,16 @@ def pick_homepage(item: dict) -> str | None:
             if n:
                 return n
     return None
+
+# 연도를 2025로 강제 변경
+def force_year_2025(d: date | None) -> date | None:
+    if not d:
+        return None
+    try:
+        return d.replace(year=2025)
+    except ValueError:
+        # 2월 29일 같은 윤년 문제 처리
+        return d.replace(year=2025, day=min(d.day, 28))
 # -----------------------------
 
 
@@ -130,8 +141,8 @@ class Command(BaseCommand):
                 defaults = {
                     "name": raw_item.name,
                     "foundation_name": raw_item.foundation_name,
-                    "recruitment_start": raw_item.recruitment_start,
-                    "recruitment_end": raw_item.recruitment_end,
+                    "recruitment_start": force_year_2025(raw_item.recruitment_start),
+                    "recruitment_end": force_year_2025(raw_item.recruitment_end),
                     "university_type": raw_item.university_type,
                     "product_type": raw_item.product_type,
                     "grade_criteria_details": raw_item.grade_criteria_details,
