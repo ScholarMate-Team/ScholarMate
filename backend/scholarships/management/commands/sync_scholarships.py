@@ -108,11 +108,20 @@ class Command(BaseCommand):
                     recruitment_start_parsed = self.safe_parse_date(item.get("모집시작일"))
                     recruitment_end_parsed = self.safe_parse_date(item.get("모집종료일"))
 
+                    start_adj, end_adj = adjust_year_with_order(
+                        recruitment_start_parsed,
+                        recruitment_end_parsed
+                    )
+
+                    
+
+                    
+
                     defaults = {
                         "name": product_name,
                         "foundation_name": org_name,
-                        "recruitment_start": force_year_2025(recruitment_start_parsed),
-                        "recruitment_end": force_year_2025(recruitment_end_parsed),
+                        "recruitment_start": start_adj,
+                        "recruitment_end": end_adj,
                         "university_type": item.get("대학구분", ""),
                         "product_type": item.get("학자금유형구분", ""),
                         "grade_criteria_details": item.get("성적기준 상세내용", ""),
