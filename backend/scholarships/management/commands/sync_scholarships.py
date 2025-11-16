@@ -46,6 +46,29 @@ def force_year_2025(d: date | None) -> date | None:
         return d.replace(year=2025, day=min(d.day, 28))
 # -----------------------------
 
+def adjust_year_with_order(start: date | None, end: date | None):
+    """
+    시작일은 2025년으로 고정.
+    마감일도 2025년으로 맞추되,
+    마감일이 시작일보다 이르면 → 2026년으로 자동 조정.
+    """
+    if not start and not end:
+        return None, None
+
+    new_start = force_year_2025(start)
+
+    if end:
+        new_end = force_year_2025(end)
+        if new_end < new_start:
+            try:
+                new_end = new_end.replace(year=2026)
+            except ValueError:
+                new_end = new_end.replace(year=2026, day=min(new_end.day, 28))
+    else:
+        new_end = None
+
+    return new_start, new_end
+
 
 class Command(BaseCommand):
     help = "공공 API에서 장학금 정보를 가져와 RawScholarship에 저장하고, 이를 기반으로 Scholarship 테이블을 동기화합니다."
@@ -135,14 +158,16 @@ class Command(BaseCommand):
         for raw_item in raw_scholarships:
             try:
                 # 마감일 지난 장학금 제외
-                if raw_item.recruitment_end and raw_item.recruitment_end < datetime.now().date():
-                    continue
+                start, end = adjust_year_with_order(
+                    raw_item.recruitment_start,
+                    raw_item.recruitment_end
+                )
 
                 defaults = {
                     "name": raw_item.name,
                     "foundation_name": raw_item.foundation_name,
-                    "recruitment_start": force_year_2025(raw_item.recruitment_start),
-                    "recruitment_end": force_year_2025(raw_item.recruitment_end),
+                    "recruitment_start": start,
+                    "recruitment_end": end,
                     "university_type": raw_item.university_type,
                     "product_type": raw_item.product_type,
                     "grade_criteria_details": raw_item.grade_criteria_details,
