@@ -1,0 +1,43 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up private key
+        run: |
+          echo "${{ secrets.EC2_INFO }}" > ec2_info.txt
+          echo "$(<ec2_info.txt)"   # 확인용 로그 X (보안상 실제로는 출력 안 됨)
+          
+          HOST=$(grep HOST ec2_info.txt | cut -d '=' -f2-)
+          USERNAME=$(grep USERNAME ec2_info.txt | cut -d '=' -f2-)
+          KEY=$(grep -A 100 "BEGIN" ec2_info.txt)
+
+          echo "$KEY" > private_key.pem
+          chmod 600 private_key.pem
+
+          echo "HOST=$HOST" >> $GITHUB_ENV
+          echo "USERNAME=$USERNAME" >> $GITHUB_ENV
+
+      - name: Copy project to EC2
+        run: |
+          rsync -avz -e "ssh -i private_key.pem -o StrictHostKeyChecking=no" \
+            . $USERNAME@$HOST:/home/ubuntu/app/
+
+      - name: Run Docker Compose on EC2
+        run: |
+          ssh -i private_key.pem -o StrictHostKeyChecking=no $USERNAME@$HOST << 'EOF'
+            cd /home/ubuntu/app
+            docker compose down
+            docker compose build
+            docker compose up -d --remove-orphans
+          EOF
