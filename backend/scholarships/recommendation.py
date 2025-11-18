@@ -317,7 +317,7 @@ def recommend(user_id: int) -> List[Dict]:
         return []
 
     scholarships = Scholarship.objects.all()
-    scholarships = filter_scholarships_by_date(scholarships) # 1. 날짜 필터링 (필요시 활성화)
+    #scholarships = filter_scholarships_by_date(scholarships) # 1. 날짜 필터링 (필요시 활성화)
     scholarships = filter_basic(scholarships, user_profile) # 2. 기본 자격 필터링
     scholarships = filter_by_region_preprocessed(scholarships, user_profile) # 3. 지역 자격 필터링
     
